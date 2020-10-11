@@ -12,3 +12,5 @@
 - Expected Goals [Paper]()
   - y  =  0.377  -   0.159 * (distance)  -  0.022 * (angle)  +  0.799 * (space)
   - "From  this  equation  it  is  possible  to  estimate  the probability  of  a  shot  scoring, based  on  its  location  (quantified  by  distance  in  yards  and  angle  in  degrees)  and  by whether  or  not  the  person  taking  the  shot  had  space  (quantified  by  0  if  there  was  an opponent within  one  metre, and 1 if not)."
+  - [Paper](https://cartilagefreecaptain.sbnation.com/2014/9/11/6131661/premier-league-projections-2014#methoderology)
+  - [Paper](https://www.americansocceranalysis.com/home/2014/05/08/calculating-expected-goals-2-0)
