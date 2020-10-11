@@ -7,11 +7,13 @@ env = make("football",
                           "scenario_name": "11_vs_11_kaggle",
                           "running_in_notebook": False,
                           'dump_full_episodes': False,
-                          "render": True,
+                          "render": False,
                           "logdir": "./logs"})
 
-output = env.run(["submission.py", "builtin_ai"])[-1]
-print(
-    'Left player: reward = %s, status = %s, info = %s' % (output[0]['reward'], output[0]['status'], output[0]['info']))
-print(
-    'Right player: reward = %s, status = %s, info = %s' % (output[1]['reward'], output[1]['status'], output[1]['info']))
+N = 100
+reward = 0
+for i in range(N):
+    output = env.run(["submission.py", "builtin_ai"])[-1]
+    reward += output[0]['reward']
+
+print("Mean reward over {} episodes: {}".format(N, reward / N))
