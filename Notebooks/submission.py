@@ -88,6 +88,7 @@ def agent(obs):
             return Action.Bottom
         elif deg <= -22.5:
             return Action.BottomRight
+        return Action.Idle
 
     def direction_check(action, direction):
         '''
@@ -99,7 +100,7 @@ def agent(obs):
         '''
         # Sticky is a N hot encoded array of size 19 for whether the player is performing an action
         # Like passing, shooting, runing right or left ...
-        if direction in obs['sticky_actions'][0:9]:
+        if direction in obs['sticky_actions']:
             # If the player is directed, perform an action
             return action
         else:
@@ -186,7 +187,7 @@ def agent(obs):
                 return True
         return False
 
-        def pass_path():
+    def pass_path():
         pass
 
     def move_to_position(pos, player_pos):
@@ -211,21 +212,20 @@ def agent(obs):
         return dir_lookup["actions"][max_index]
 
     def on_breakaway(player_pos, obs):
-        '''Detects if a player is on a breakaway or not'''
+        '''Detects if a player is on a breakaway (aka 1v1 duel with goal) or not'''
         player_x = player_pos[0]
         right_team_pos = obs["right_team"][1:]  # Not including the goalie
         return all([player_x > r_ply_pos[0] for r_ply_pos in right_team_pos])
 
     # Constants
-
     constants = {
         "delta_x": 9.2e-3,  # How much player / ball position changes when moving without sprinting
         # How much player / ball position changes when sprinting
         "sprinting_delta_x": 1.33e-2,
         "max_distance_to_influence_ball": 0.01,
         "max_distance_to_influence_ball_sprinting": 0.0185,
-        "goalie_out_of_box_dist": 0.3,
-        "on_breakaway_goalie_dist": 0.1
+        "goalie_out_of_box_dist": 0.2,
+        "on_breakaway_goalie_dist": 0.2
     }
 
     state = {
@@ -240,6 +240,13 @@ def agent(obs):
         "actions": [Action.Right, Action.TopRight, Action.Top, Action.TopLeft, Action.Left, Action.BottomLeft, Action.Bottom, Action.BottomRight]
     }
 
+    # Hyperparameters
+    SPRINT_RANGE = 0.6
+    SHOOT_RANGE_X = 0.7
+    SHOOT_RANGE_Y = 0.2
+    LONG_RANGE_SHOT_X = 0.4
+    LONG_RANGE_SHOT_Y = 0.2
+
     # Games State
     player_pos = obs['left_team'][obs['active']]
     prev_owner = state["prev_owner"]
@@ -250,10 +257,15 @@ def agent(obs):
     ball_owned_player = obs["ball_owned_player"]
     goal_post_top = [1, 0.044]
     goal_post_bot = [1, -0.044]
+    goal = [1, 0]
 
     # Game Agent
-    if Action.Sprint not in obs['sticky_actions']:
+    if 0 < player_pos[0] < SPRINT_RANGE and Action.Sprint not in obs['sticky_actions']:
+        # Sprint when in the final half of either side of the pitch
         return Action.Sprint
+    elif player_pos[0] > SPRINT_RANGE and Action.Sprint in obs['sticky_actions']:
+        # Else run normally
+        return Action.ReleaseSprint
 
     follow_ball_action = move_to_position(ball_pos, player_pos)
 
@@ -275,14 +287,31 @@ def agent(obs):
                                        coordinate_to_direction(player_pos, teammate))
 
         elif obs["game_mode"] == 3:
-            # FreeKick
-            return direction_check(Action.Shot,
-                                   coordinate_to_direction(player_pos, [1, 0]))
+            # FreeKick - Shoot when close to goal and pass ball otherwise
+            # Shoot when close to goal
+            if player_pos[0] > SHOOT_RANGE_X and abs(player_pos[1]) < SHOOT_RANGE_Y:
+                return direction_check(Action.LongShot,  # TODO: Finetune if longshot or regular
+                                       coordinate_to_direction(player_pos, goal))
+            else:
+                # When far from goal
+                teammate = closest_player(player_pos)
+                # LongPass to the Right if the closest player is obstructed by opponent
+                if opponent_on_path(player_pos, teammate):
+                    return direction_check(Action.LongPass, goal)
+                else:
+                    return direction_check(Action.ShortPass,
+                                           coordinate_to_direction(player_pos, teammate))
 
         elif obs["game_mode"] == 4:
-            # Corner
-            return direction_check(Action.HighPass,
-                                   coordinate_to_direction(player_pos, [1, 0]))
+            # Corner - Pass the ball to random points in the box
+            directions = [coordinate_to_direction(player_pos, goal),
+                          #                           coordinate_to_direction(player_pos, [.7, 0]),
+                          coordinate_to_direction(player_pos, [.8, 0]),
+                          coordinate_to_direction(player_pos, [.9, 0])]
+            for action in directions:
+                if action in obs['sticky_actions']:
+                    return Action.HighPass
+            return np.random.choice(directions)
 
         elif obs["game_mode"] == 5:
             # ThrowIn - Make a short pass to the closest teammate
@@ -291,37 +320,62 @@ def agent(obs):
                                                            closest_player(player_pos)))
 
         elif obs["game_mode"] == 6:
-            # Penalty
-            return direction_check(Action.Shot,
-                                   coordinate_to_direction(player_pos, [1, 0]))
+            # Penalty - Randomly choose a direction (either a goal post or the center of the goal)
+            directions = [coordinate_to_direction(player_pos, goal),
+                          coordinate_to_direction(player_pos, goal_post_top),
+                          coordinate_to_direction(player_pos, goal_post_bot)]
+            for action in directions:
+                if action in obs['sticky_actions']:
+                    return Action.Shot
+            return np.random.choice(directions)
 
         else:
             # Normal
             # Calculate goalie position, if goalie presses could lead to loss of possesion
             goalie_pos = np.array(obs["right_team"][0])
             dist_to_goalie = np.linalg.norm(np.array(player_pos) - goalie_pos)
-            dist_goalie_off_line = np.linalg.norm(
-                np.array([1, 0]) - goalie_pos)
+            dist_goalie_off_line = np.linalg.norm(np.array(goal) - goalie_pos)
 
             # If we are on a breakaway and the goalie has come close, ideally we should move around goalie
-            if on_breakaway(player_pos, obs):
-                if dist_to_goalie < constants["on_breakaway_goalie_dist"]:
-                    return Action.Shot
+#             if on_breakaway(player_pos, obs):
+#                 if dist_to_goalie < constants["on_breakaway_goalie_dist"]:
+#                     return direction_check(Action.Shot,
+#                                            coordinate_to_direction(player_pos, goal))
 
             # If goalie is really far out of the box worth trying a shot
-            if dist_goalie_off_line > constants["goalie_out_of_box_dist"]:
-                return Action.Shot
+#             if dist_goalie_off_line > constants["goalie_out_of_box_dist"]:
+#                     return direction_check(Action.Shot,
+#                                            coordinate_to_direction(player_pos, goal))
 
             # Shoot when expected goal is quite high
-            if expected_goal(player_pos) > 0.05:
-                return Action.Shot
+#             if expected_goal(player_pos) > 0.05:
+#                 return direction_check(Action.Shot,
+#                                        coordinate_to_direction(player_pos, goal))
 
-            # Shot if we are 'close' to the goal (based on 'x' coordinate).
-            if player_pos[0] > 0.7:
-                return Action.Shot
+            # Shoot when close to goal
+            if player_pos[0] > SHOOT_RANGE_X and \
+                    abs(player_pos[1]) < SHOOT_RANGE_Y and \
+                    player_pos[0] < obs['ball'][0]:
+                return direction_check(Action.Shot,
+                                       coordinate_to_direction(player_pos, goal))
 
-            # Run towards the goal otherwise.
+            # Shoot when goali leaves line and close-ish to goal
+#             if ( dist_goalie_off_line > constants["goalie_out_of_box_dist"] and \
+#                 player_pos[0] > LONG_SHOT_X and \
+#                 abs(player_pos[1]) < LONG_SHOT_Y ):
+            if (abs(obs['right_team'][0][0] - 1) > constants["goalie_out_of_box_dist"] and
+                player_pos[0] > LONG_RANGE_SHOT_X and
+                    abs(player_pos[1]) < LONG_RANGE_SHOT_Y):
+                return direction_check(Action.Shot,
+                                       coordinate_to_direction(player_pos, goal))
+
+            # Run towards the Goal
+            if player_pos[0] > 0:
+                return coordinate_to_direction(player_pos, goal)
+
+            # Run towards the Right otherwise
             return Action.Right
+
     # Defense
     else:
         # If the other team owns the ball
