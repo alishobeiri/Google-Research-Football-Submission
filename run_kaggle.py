@@ -1,5 +1,8 @@
 # Set up the Environment.
 from kaggle_environments import make
+from gfootball.env import create_environment
+
+env_football = create_environment("11_vs_11_kaggle")
 
 env = make("football",
            debug=True,
@@ -10,7 +13,7 @@ env = make("football",
                           "render": True,
                           "logdir": "./logs"})
 
-output = env.run(["submission.py", "builtin_ai"])[-1]
+output = env.run(["builtin_ai", "builtin_ai"])[-1]
 print(
     'Left player: reward = %s, status = %s, info = %s' % (output[0]['reward'], output[0]['status'], output[0]['info']))
 print(
