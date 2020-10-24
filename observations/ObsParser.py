@@ -2,7 +2,6 @@ import numpy as np
 
 from rewards.distance_to_goal import dist_to_goal
 
-
 class ObsParser(object):
     @staticmethod
     def parse(obs):

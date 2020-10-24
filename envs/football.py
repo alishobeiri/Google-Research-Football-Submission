@@ -2,7 +2,8 @@ from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.samplers.collections import TrajInfo
 from kaggle_environments import make
 import gym
-from utils.ObsParser import ObsParser
+from observations.ObsParser import ObsParser
+from observations.EgoCentric import EgoCentricObs
 import numpy as np
 
 from kaggle_environments.envs.football.helpers import Action
@@ -35,7 +36,7 @@ class FootballEnv(gym.Env):
     def step(self, action):
         obs, reward, done, info = self.trainer.step([action])
         obs = obs['players_raw'][0]
-        state, (l_score, r_score, custom_reward) = ObsParser.parse(obs)
+        state, (l_score, r_score, custom_reward) = EgoCentricObs.parse(obs)
         info['l_score'] = l_score
         info['r_score'] = r_score
         return state, custom_reward, done, info
@@ -44,7 +45,7 @@ class FootballEnv(gym.Env):
         self.trainer = self.env.train(self.agents)
         obs = self.trainer.reset()
         obs = obs['players_raw'][0]
-        state, _ = ObsParser.parse(obs)
+        state, _ = EgoCentricObs.parse(obs)
         return state
 
     def render(self, **kwargs):
