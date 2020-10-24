@@ -3,6 +3,7 @@ from rlpyt.samplers.collections import TrajInfo
 from kaggle_environments import make
 import gym
 from utils.ObsParser import ObsParser
+import numpy as np
 
 from kaggle_environments.envs.football.helpers import Action
 
@@ -53,8 +54,8 @@ class FootballEnv(gym.Env):
         pass
 
 
-def footbal_env(env_id=1, **kwargs):
-    return GymEnvWrapper(FootballEnv(env_id=env_id, **kwargs))
+def football_env(env_id=1, **kwargs):
+    return GymEnvWrapper(FootballEnv(env_id=env_id, **kwargs), act_null_value=0)
 
 
 class FootballTrajInfo(TrajInfo):
@@ -64,7 +65,10 @@ class FootballTrajInfo(TrajInfo):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.score = 0
+        self.action = np.random.randn()
+        self.observation = 0
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
-        self.score = env_info["l_score"]
+        self.score = env_info[0]
+        self.action = action

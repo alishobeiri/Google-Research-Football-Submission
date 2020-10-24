@@ -38,7 +38,8 @@ class ObsParser(object):
                    *obs['score'],
                    obs['steps_left'],
                    *game_mode,
-                   *obs['sticky_actions']]
+                   *obs['sticky_actions'],
+                   np.linalg.norm(obs['ball'][:2] - np.array([1, 0]))]
 
         scalars = np.r_[scalars].astype(np.float32)
         # get the actual scores and compute a reward

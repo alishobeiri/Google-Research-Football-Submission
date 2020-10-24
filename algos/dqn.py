@@ -56,6 +56,7 @@ class DQNVector(RlAlgorithm):
             default_priority=None,
             ReplayBufferCls=None,  # Leave None to select by above options.
             updates_per_sync=1,  # For async mode only.
+            device='cuda'
             ):
         """Saves input arguments.
 
@@ -74,6 +75,7 @@ class DQNVector(RlAlgorithm):
         del batch_size  # Property.
         save__init__args(locals())
         self.update_counter = 0
+        self.device = device
 
     def initialize(self, agent, n_itr, batch_spec, mid_batch_reset, examples,
             world_size=1, rank=0):
@@ -209,6 +211,12 @@ class DQNVector(RlAlgorithm):
             done=samples.env.done,
         )
 
+    def samples_buffer_to_cuda(self, samples):
+        samples.action = samples.action.cuda()
+        samples.observation = samples.observation.cuda()
+        samples.reward = samples.reward.cuda()
+        samples.done = samples.done.cuda()
+
     def loss(self, samples):
         """
         Computes the Q-learning loss, based on: 0.5 * (Q - target_Q) ^ 2.
@@ -249,7 +257,7 @@ class DQNVector(RlAlgorithm):
             losses = torch.where(abs_delta <= self.delta_clip, losses, b)
         if self.prioritized_replay:
             losses *= samples.is_weights
-        td_abs_errors = abs_delta.detach()
+        td_abs_errors = abs_delta.cpu().detach()
         if self.delta_clip is not None:
             td_abs_errors = torch.clamp(td_abs_errors, 0, self.delta_clip)
         if not self.mid_batch_reset:

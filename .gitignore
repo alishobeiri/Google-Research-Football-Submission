@@ -4,6 +4,11 @@ __pycache__/
 *$py.class
 .idea/
 
+kaggle-environments/.git/
+kaggle-environments/football/.git/
+rlpyt/.git/
+logs/
+
 # C extensions
 *.so
 

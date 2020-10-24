@@ -72,6 +72,8 @@ def agent(obs):
     ball_direction = obs["ball_direction"]
     ball_owned_player = obs["ball_owned_player"]
 
+    print(player_pos)
+
     if Action.Sprint not in obs['sticky_actions']:
         return Action.Sprint
 
