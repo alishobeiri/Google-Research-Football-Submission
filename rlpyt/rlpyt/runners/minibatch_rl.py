@@ -310,11 +310,10 @@ class MinibatchRlEval(MinibatchRlBase):
                 self.agent.train_mode(itr)
                 opt_info = self.algo.optimize_agent(itr, samples)
                 self.store_diagnostics(itr, traj_infos, opt_info)
-                if opt_info.loss:
-                    # We only evaluate if we've actually updated the agent
-                    if (itr + 1) % self.log_interval_itrs == 0:
-                        eval_traj_infos, eval_time = self.evaluate_agent(itr)
-                        self.log_diagnostics(itr, eval_traj_infos, eval_time)
+                # We only evaluate if we've actually updated the agent
+                if (itr + 1) % self.log_interval_itrs == 0:
+                    eval_traj_infos, eval_time = self.evaluate_agent(itr)
+                    self.log_diagnostics(itr, eval_traj_infos, eval_time)
         self.shutdown()
 
     def evaluate_agent(self, itr):

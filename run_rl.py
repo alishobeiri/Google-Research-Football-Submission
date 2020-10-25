@@ -33,8 +33,10 @@ from copy import deepcopy
 
 from agents.football_cat_dqn_agent import FootballCatDqnAgent
 from agents.football_dqn_agent import FootballDqnAgent
+from agents.sac_discrete_agent import SACDiscreteAgent
 from algos.cat_dqn import CategoricalDQNVector
 from algos.dqn import DQNVector
+from algos.sac_discrete import SACDiscrete
 from envs.football import FootballTrajInfo, football_env
 
 from rlpyt.utils.logging import logger
@@ -57,10 +59,11 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "running_in_notebook": False,
                           'dump_full_episodes': False,
                           "render": False,
-                          "logdir": "./logs"}
+                          "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = True
+    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["save_video"] = False
     run_async = True
     if run_async:
         affinity = make_affinity(
@@ -84,11 +87,15 @@ def build_and_train(scenario="academy_empty_goal_close",
         # total data collected before each training iteration Batch_T * Batch_B
         algo=dict(batch_size=batch_size,
                   replay_ratio=4,
-                  min_steps_learn=min_steps_learn,
-                  prioritized_replay=False,
-                  double_dqn=False
+                  min_steps_learn=0,
+                  # prioritized_replay=False,
+                  # double_dqn=False
                   ),
-        sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
+        agent=dict(
+            # eps_itr_min=3000,
+            # eps_itr_max=50000,
+        ),
+        sampler=dict(batch_T=batch_T, batch_B=1)#os.cpu_count()),
     )
     sampler = AsyncGpuSampler(
         EnvCls=football_env,
@@ -102,8 +109,8 @@ def build_and_train(scenario="academy_empty_goal_close",
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    algo = DQNVector(**config["algo"])  # Run with defaults.
-    agent = FootballDqnAgent()
+    algo = SACDiscrete(**config["algo"])  # Run with defaults.
+    agent = SACDiscreteAgent(**config["agent"])
     runner = AsyncRlEval(
         algo=algo,
         agent=agent,
@@ -113,7 +120,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         affinity=affinity,
     )
     config = dict(scenario=scenario)
-    name = 'cat_dqn_' + scenario
+    name = type(algo).__name__ + scenario
     log_dir = 'training/' + name
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
         tb_loc = logger.get_tf_summary_writer().log_dir
@@ -121,6 +128,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         tb.configure(argv=[None, '--logdir', tb_loc, '--host', '0.0.0.0'])
         url = tb.launch()
         print("Tensorboard running at: ", url)
+        eval_kwargs["configuration"]["logdir"] = tb_loc
         runner.train()
         if cloud:
             storage_output_loc = tb_loc.strip("/")[len(LOG_DIR) + len('local'):].strip("/")
@@ -133,18 +141,18 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_empty_goal_close')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
-                                                        helps to reduce variance', type=int, default=10)
+                                                        helps to reduce variance', type=int, default=1)
     parser.add_argument('--log_interval_steps', help='Number of environment steps before logging', type=int, default=int(1e5))
-    parser.add_argument('--batch_size', help='Batch size to train with', type=int, default=512)
+    parser.add_argument('--batch_size', help='Batch size to train with', type=int, default=256)
     parser.add_argument('--n_train_steps', help='Number of environment steps to train on',
                         type=int, default=int(1e9))
     parser.add_argument('--min_steps_learn', help='Number of environment steps to take per parallel sampler before \
-                                            training, default 256', type=int, default=int(5e4))
+                                            training, default 256', type=int, default=0)# int(5e4))
     parser.add_argument('--batch_T', help='Number of environment steps to take per parallel sampler before \
-                                            training, default 256', type=int, default=5)
+                                            training', type=int, default=256)
     parser.add_argument('--cloud', help='Whether the project is on cloud or not', type=bool, default=False)
     parser.add_argument('--cloud_bucket', help='Storage bucket to save results to', type=str, default=None)
 

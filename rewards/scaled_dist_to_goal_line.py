@@ -18,6 +18,8 @@ def scaled_dist_to_goal_line(obs, lost_possession=False):
     player_pos = obs['left_team'][obs['active']]
     n_defenders_in_front = get_number_of_defenders_in_front(player_pos, obs["right_team"])
 
+    ball_owned = int(obs["ball_owned_team"] == 0)
+
     dist = dist_to_goal_line(obs)
     scale = (N_players - n_defenders_in_front) / N_players
     inv_scale = n_defenders_in_front / N_players
@@ -26,4 +28,4 @@ def scaled_dist_to_goal_line(obs, lost_possession=False):
     if lost_possession:
         return inv_scale * (1 - dist**0.4)
 
-    return scale * (1 - dist**0.4) + l_score
+    return ball_owned * (scale * (1 - dist**0.4)) + l_score

@@ -6,6 +6,8 @@ from numpy import arctan2
 from rewards.scaled_dist_to_goal_line import get_number_of_defenders_in_front, scaled_dist_to_goal_line
 from rewards.distance_to_goal_line import dist_to_goal_line
 
+from kaggle_environments.envs.football.helpers import Action
+
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -22,6 +24,27 @@ def angle_between_points(p1, p2):
     angle = degrees(arctan2(float(dy), float(dx)))
     return angle
 
+
+def compute_action_mask(obs):
+    # We want to prevent certain actions from being taken by appending a binary vector that
+    # indicates which actions are possible
+    stick_actions = obs["sticky_actions"]
+    all_actions = np.ones(len(Action))
+    all_actions[Action.ReleaseDribble.value] = 0
+    all_actions[Action.ReleaseSprint.value] = 0
+    all_actions[Action.ReleaseDirection.value] = 0
+    all_actions[Action.Slide.value] = 0
+
+    if any(stick_actions[:8]):
+        all_actions[Action.ReleaseDirection.value] = 1
+
+    if stick_actions[8]:
+        all_actions[Action.ReleaseSprint.value] = 1
+
+    if stick_actions[9]:
+        all_actions[Action.ReleaseDribble.value] = 1
+
+    return all_actions
 
 values = {
     'prev_owner': 0
@@ -69,7 +92,7 @@ class EgoCentricObs(object):
         enemy_team = np.array(enemy_team).flatten()
 
         n_defenders_ahead = get_number_of_defenders_in_front(player_pos, obs["right_team"])
-        curr_dist_to_goal = sigmoid(dist_to_goal_line(obs))
+        curr_dist_to_goal = np.log(dist_to_goal(obs))  # Closer distance have larger variance, farther less important
 
         # get other information
         game_mode = [0 for _ in range(7)]
@@ -97,5 +120,5 @@ class EgoCentricObs(object):
         reward = scaled_dist_to_goal_line(obs, lost_possession=lost_possession)
         reward_info = l_score, r_score, reward
         combined = np.concatenate([active_player.flatten(), teammates.flatten(),
-                                   enemy_team.flatten(), scalars.flatten()])
+                                   enemy_team.flatten(), scalars.flatten(), compute_action_mask(obs).flatten()])
         return combined, reward_info
