@@ -251,10 +251,8 @@ class SACDiscrete(RlAlgorithm):
             min_target_q = torch.min(target_q1, target_q2)
             target_value = target_action_probs * (min_target_q - self._alpha * target_log_pi)
             target_value = target_value.sum(dim=1).unsqueeze(-1)
-
-        disc = self.discount ** self.n_step_return
-        y = (self.reward_scale * samples.return_ +
-            (1 - samples.done_n.float()) * disc * target_value)
+            disc = self.discount ** self.n_step_return
+            y = self.reward_scale * samples.return_ + (1 - samples.done_n.float()) * disc * target_value
 
         q1, q2 = self.agent.q(*agent_inputs, action)
         q1 = torch.gather(q1, 1, action.unsqueeze(1).long())

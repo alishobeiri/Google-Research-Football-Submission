@@ -25,19 +25,19 @@ class DiscreteActorModel(torch.nn.Module):
         Takes in input observation and outputs all possible Q values of actions
         """
         obs = observation.type(torch.float)  # Expect torch.uint8 inputs
-        out_size = self.head._output_size
-
-        # For action masking
-        if len(obs.shape) > 1:
-            # Batch obs
-            action_mask = obs[:, -out_size:].type(torch.bool)
-        else:
-            # Non batched obs
-            action_mask = obs[-out_size:].type(torch.bool)
+        # out_size = self.head._output_size
+        #
+        # # For action masking
+        # if len(obs.shape) > 1:
+        #     # Batch obs
+        #     action_mask = obs[:, -out_size:].type(torch.bool)
+        # else:
+        #     # Non batched obs
+        #     action_mask = obs[-out_size:].type(torch.bool)
 
         # Action mask holds all values that are possible
         pi = self.head(obs)
-        pi[~action_mask] = -10e9
+        # pi[~action_mask] = -10e9
 
         action_probs = F.softmax(pi, dim=-1)
         action_dist = Categorical(action_probs)

@@ -36,7 +36,7 @@ class FootballEnv(gym.Env):
     def step(self, action):
         obs, reward, done, info = self.trainer.step([action])
         obs = obs['players_raw'][0]
-        state, (l_score, r_score, custom_reward) = EgoCentricObs.parse(obs)
+        state, (l_score, r_score, custom_reward) = EgoCentricObs.parse(obs, action)
         info['l_score'] = l_score
         info['r_score'] = r_score
         return state, custom_reward, done, info
@@ -45,7 +45,7 @@ class FootballEnv(gym.Env):
         self.trainer = self.env.train(self.agents)
         obs = self.trainer.reset()
         obs = obs['players_raw'][0]
-        state, _ = EgoCentricObs.parse(obs)
+        state, _ = EgoCentricObs.parse(obs, None)
         return state
 
     def render(self, **kwargs):
@@ -66,10 +66,13 @@ class FootballTrajInfo(TrajInfo):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.score = 0
-        self.action = np.random.randn()
-        self.observation = 0
+        self.action = 0
+        self.player_pos_x = 0
+        self.player_pos_y = 0
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
-        self.score = env_info[0]
         self.action = action
+        self.score = env_info[0]
+        self.player_pos_x = observation[0]
+        self.player_pos_y = observation[1]

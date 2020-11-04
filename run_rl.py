@@ -18,8 +18,10 @@ import os
 import subprocess
 
 import torch
+from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.algos.dqn.cat_dqn import CategoricalDQN
 from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.algos.pg.ppo import PPO
 from rlpyt.runners.async_rl import AsyncRlEval
 from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
@@ -30,6 +32,9 @@ from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.launching.affinity import make_affinity
 from rlpyt.utils.logging.context import logger_context
 from copy import deepcopy
+
+from agents.football_ppo_agent import FootballFfAgent
+from envs.cartpole import cartpole_env
 
 from agents.football_cat_dqn_agent import FootballCatDqnAgent
 from agents.football_dqn_agent import FootballDqnAgent
@@ -42,6 +47,9 @@ from envs.football import FootballTrajInfo, football_env
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import LOG_DIR
 from tensorboard import program
+
+from models.football_cat_dqn_model import FootballCatDqnModel
+
 
 def build_and_train(scenario="academy_empty_goal_close",
                     run_id=0,
@@ -62,8 +70,10 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["render"] = True
     eval_kwargs["configuration"]["save_video"] = False
+    # env_kwargs = dict()
+    # eval_kwargs = env_kwargs.copy()
     run_async = True
     if run_async:
         affinity = make_affinity(
@@ -80,22 +90,27 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(cuda_idx=0, workers_cpus=list(range(5)))
+        affinity = dict(cuda_idx=0, workers_cpus=list(range(os.cpu_count())))
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
         # total data collected before each training iteration Batch_T * Batch_B
-        algo=dict(batch_size=batch_size,
-                  replay_ratio=4,
-                  min_steps_learn=0,
-                  # prioritized_replay=False,
-                  # double_dqn=False
-                  ),
-        agent=dict(
-            # eps_itr_min=3000,
-            # eps_itr_max=50000,
+        algo=dict(
+            batch_size=batch_size,
+            replay_ratio=4,
+            min_steps_learn=int(0),
+            prioritized_replay=True,
+            double_dqn=True,
+            n_step_return=4
         ),
-        sampler=dict(batch_T=batch_T, batch_B=1)#os.cpu_count()),
+        agent=dict(
+            # dueling=True
+            # eps_itr_max=50000,
+            model_kwargs=dict(
+                dueling=True
+            )
+        ),
+        sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
     sampler = AsyncGpuSampler(
         EnvCls=football_env,
@@ -104,13 +119,13 @@ def build_and_train(scenario="academy_empty_goal_close",
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(0),
         eval_n_envs=1,
-        eval_max_steps=int(10e3),
+        eval_max_steps=int(100e3),
         eval_max_trajectories=eval_max_trajectories,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    algo = SACDiscrete(**config["algo"])  # Run with defaults.
-    agent = SACDiscreteAgent(**config["agent"])
+    algo = CategoricalDQNVector(**config["algo"])  # Run with defaults.
+    agent = FootballCatDqnAgent(**config["agent"])
     runner = AsyncRlEval(
         algo=algo,
         agent=agent,
@@ -119,8 +134,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         log_interval_steps=log_interval_steps,
         affinity=affinity,
     )
-    config = dict(scenario=scenario)
-    name = type(algo).__name__ + scenario
+    name = "rainbow" + "_" + type(algo).__name__ + "_" + scenario + "_rule_based_reward"
     log_dir = 'training/' + name
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
         tb_loc = logger.get_tf_summary_writer().log_dir
@@ -128,7 +142,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         tb.configure(argv=[None, '--logdir', tb_loc, '--host', '0.0.0.0'])
         url = tb.launch()
         print("Tensorboard running at: ", url)
-        eval_kwargs["configuration"]["logdir"] = tb_loc
+        # eval_kwargs["configuration"]["logdir"] = tb_loc
         runner.train()
         if cloud:
             storage_output_loc = tb_loc.strip("/")[len(LOG_DIR) + len('local'):].strip("/")
@@ -141,14 +155,14 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_empty_goal_close')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
-                                                        helps to reduce variance', type=int, default=1)
+                                                        helps to reduce variance', type=int, default=10)
     parser.add_argument('--log_interval_steps', help='Number of environment steps before logging', type=int, default=int(1e5))
     parser.add_argument('--batch_size', help='Batch size to train with', type=int, default=256)
     parser.add_argument('--n_train_steps', help='Number of environment steps to train on',
-                        type=int, default=int(1e9))
+                        type=int, default=int(1e7))
     parser.add_argument('--min_steps_learn', help='Number of environment steps to take per parallel sampler before \
                                             training, default 256', type=int, default=0)# int(5e4))
     parser.add_argument('--batch_T', help='Number of environment steps to take per parallel sampler before \
