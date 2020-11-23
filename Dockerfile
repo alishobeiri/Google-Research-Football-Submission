@@ -65,16 +65,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Installs google cloud sdk, this is mostly for using gsutil to export model.
 RUN wget -nv \
     https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz && \
-    mkdir /root/tools && \
-    tar xvzf google-cloud-sdk.tar.gz -C /root/tools && \
-    rm google-cloud-sdk.tar.gz && \
-    /root/tools/google-cloud-sdk/install.sh --usage-reporting=false \
+    sudo mkdir /root/tools && \
+    sudo tar xvzf google-cloud-sdk.tar.gz -C /root/tools && \
+    sudo rm google-cloud-sdk.tar.gz && \
+    sudo /root/tools/google-cloud-sdk/install.sh --usage-reporting=false \
         --path-update=false --bash-completion=false \
         --disable-installation-options && \
-    rm -rf /root/.config/* && \
-    ln -s /root/.config /config && \
+    sudo rm -rf /root/.config/* && \
+    sudo ln -s /root/.config /config && \
     # Remove the backup directory that gcloud creates
-    rm -rf /root/tools/google-cloud-sdk/.install/.backup
+    sudo rm -rf /root/tools/google-cloud-sdk/.install/.backup
 
 # Path configuration
 ENV PATH $PATH:/root/tools/google-cloud-sdk/bin

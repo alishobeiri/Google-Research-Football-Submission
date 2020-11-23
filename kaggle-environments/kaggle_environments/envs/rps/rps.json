@@ -18,12 +18,19 @@
       "minimum": 2,
       "default": 1000
     },
-    "agentTimeout": 15,
+    "tieRewardThreshold": {
+      "description": "Minimum reward needed to achieve a win rather than a tie.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 20
+    },
+    "agentTimeout": 60,
     "actTimeout": 1
   },
   "reward": {
-    "description": "0 = Lost, 0.5 = Draw, 1 = Won",
-    "enum": [0, 0.5, 1],
+    "description": "-1 = Lost, 0 = Draw, 1 = Won",
+    "enum": [-1, 0, 1],
     "default": 0
   },
   "observation": {
@@ -38,6 +45,14 @@
       "type": "integer",
       "shared": true,
       "minimum": 0,
+      "default": 0
+    },
+    "remainingOverageTime": 60,
+    "reward": {
+      "description": "Current reward of the agent.",
+      "type": "integer",
+      "minimum": -999,
+      "maximum": 999,
       "default": 0
     }
   },

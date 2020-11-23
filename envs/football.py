@@ -14,17 +14,21 @@ class FootballEnv(gym.Env):
 
     def __init__(self,
                  scenario_name="11_vs_11_kaggle",
-                 right_agent="builtin_ai",
+                 right_agent="submission.py",
                  debug=False,
                  configuration=dict(),
                  env_id=0):
         super(FootballEnv, self).__init__()
         self.env_id = env_id
+        # Randomly select handmade defense or builtin ai to add variance
+        random = np.random.random()
+        right_agent = "builtin_ai" if random > 0.5 else "submission.py"
+        print("Right agent: ", right_agent)
         self.agents = [None, right_agent]  # We will step on the None agent
         self.env = make("football",
                         debug=debug,
                         configuration=configuration)
-
+        self.obs_parser = EgoCentricObs()
         # Create action spaces
         self.action_space = gym.spaces.Discrete(len(Action))
 
@@ -36,7 +40,7 @@ class FootballEnv(gym.Env):
     def step(self, action):
         obs, reward, done, info = self.trainer.step([action])
         obs = obs['players_raw'][0]
-        state, (l_score, r_score, custom_reward) = EgoCentricObs.parse(obs, action)
+        state, (l_score, r_score, custom_reward) = self.obs_parser.parse(obs, action)
         info['l_score'] = l_score
         info['r_score'] = r_score
         return state, custom_reward, done, info
@@ -44,8 +48,9 @@ class FootballEnv(gym.Env):
     def reset(self):
         self.trainer = self.env.train(self.agents)
         obs = self.trainer.reset()
+        self.obs_parser.reset()
         obs = obs['players_raw'][0]
-        state, _ = EgoCentricObs.parse(obs, None)
+        state, _ = self.obs_parser.parse(obs, None)
         return state
 
     def render(self, **kwargs):

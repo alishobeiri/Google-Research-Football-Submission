@@ -78,17 +78,14 @@ class FootballCatDqnModel(torch.nn.Module):
 
         lead_dim, T, B, img_shape = infer_leading_dims(obs, 1)
         # out_size = self.head._output_size
-
+        #
         # if not lead_dim:
         #     obs, action_mask = obs[:-out_size], obs[-out_size:]
         # else:
         #     obs, action_mask = obs[:, :-out_size], obs[:, -out_size:]
-        # action_mask = action_mask.type(torch.bool).unsqueeze(0)
         p = self.head(obs)
 
         # Action mask holds all values that are possible
-        # p[~action_mask] = -1e24
-
         p = F.softmax(p, dim=-1)
 
         p = restore_leading_dims(p, lead_dim, T, B)

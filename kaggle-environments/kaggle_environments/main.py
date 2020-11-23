@@ -164,7 +164,7 @@ def action_step(args):
 
 def action_run(args):
     # Create a fake env so we can make the real env in our try body
-    env = {"logs": args.logs}
+    env = utils.structify({"logs": args.logs})
     try:
         env = make(args.environment, args.configuration, args.info, args.steps, args.logs, args.debug)
         env.run(args.agents)
@@ -287,7 +287,7 @@ def action_http(args):
 
     app = Flask(__name__, static_url_path="", static_folder="")
     app.route("/", methods=["GET", "POST"])(lambda: http_request(request))
-    app.run(args.host, args.port, debug=True)
+    app.run(args.host, args.port, debug=args.debug, use_reloader=args.debug)
 
 
 def http_request(request):

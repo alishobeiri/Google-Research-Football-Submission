@@ -19,22 +19,16 @@ def dist_to_goal_reward(obs):
 
 
 def rule_based_reward(obs, action=None, lost_possession=None):
-    player_pos = obs['left_team'][obs['active']]
     reward = 0
-    ball_owned = int(obs["ball_owned_team"] == 0)
-    angle_to_goal = max(-np.pi / 2, min(np.pi / 2, angle_between_points(player_pos, goal_pos)))
-    dist_to_goal_rew = np.cos(angle_to_goal) * (dist_to_goal_reward(obs))
-    reward += ball_owned * dist_to_goal_rew # We scale by ball owned to prevent kicking randomly
     if ((action == Action.HighPass) or
         (action == Action.LongPass) or
         (action == Action.ShortPass)):
-        reward += 0.1
-    elif ((action == Action.Shot) and
-          (player_pos[0] > 0.7)):
-        reward += 0.3
+        reward += 0.5
+    elif action == Action.Shot:
+        reward += 1.0
 
     l_score, r_score = obs['score']
     reward += l_score * 10  # If you score, you get a big big boost
     if lost_possession:
-        reward -= -10
+        reward += -10
     return reward

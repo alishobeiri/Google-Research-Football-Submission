@@ -152,3 +152,12 @@ class PPO(PolicyGradientAlgo):
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity
+
+
+class PPOMoE(PPO):
+    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
+            init_rnn_state=None):
+        loss, entropy, perplexity = super().loss(agent_inputs, action, return_, advantage, valid, old_dist_info, init_rnn_state)
+        moe_loss = self.agent(*agent_inputs)
+        loss += moe_loss
+        return loss, entropy, perplexity

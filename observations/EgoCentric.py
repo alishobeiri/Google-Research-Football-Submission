@@ -1,80 +1,172 @@
 import numpy as np
 from rewards.distance_to_goal import dist_to_goal, dist_to_goal_reward, rule_based_reward
-from utils.utils import sigmoid, angle_between_points, dist_between_points
+from rewards.possession_score_zero_sum import possession_score_reward
+from utils.utils import sigmoid, angle_between_points, dist_between_points, compute_action_mask
+from kaggle_environments.envs.football.helpers import *
+from numpy import arctan2
 
-values = {
-    'prev_owner': 0
-}
+goal_pos = [1.0, 0]
+
+sticky_action_lookup = {val.name: i for i, val in enumerate(sticky_index_to_action)}
+
+
+def dist_to_goal(obs):
+    ball_pos = obs["ball"]
+    dist = np.linalg.norm(np.array(ball_pos[:2]) - np.array(goal_pos))
+    return dist
+
+
+def dist_between_points(p1, p2):
+    return np.linalg.norm(np.array(p1) - np.array(p2))
+
+
+def angle_between_points(p1, p2):
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    # Need to scale all x values down
+    angle = arctan2(float(dy), float(dx))
+    return angle
+
+
+def valid_team(team):
+    return team == 'WeKick'
+
+
+# Shoot, short pass, long pass, high pass
+inter_action_vec_lookup = {Action.Shot.value: 0, Action.ShortPass.value: 1,
+                           Action.LongPass.value: 2, Action.HighPass.value: 3}
 
 
 class EgoCentricObs(object):
-    @staticmethod
-    def parse(obs, action):
+    def __init__(self):
+        self.constant_lookup = dict(
+            prev_team=-1,
+            intermediate_action_vec=[0, 0, 0, 0],
+            possession=False,
+            prev_l_score=0,
+            prev_r_score=0
+        )
+
+    def reset(self):
+        self.constant_lookup = dict(
+            prev_team=-1,
+            intermediate_action_vec=[0, 0, 0, 0],
+            possession=False,
+            prev_l_score=0,
+            prev_r_score=0
+        )
+
+    def parse(self, obs, prev_action=None):
         active_index = obs['active']
         player_pos = obs['left_team'][active_index]
         player_vel = obs['left_team_direction'][active_index]
         player_tired_factor = obs['left_team_tired_factor'][active_index]
-        player_role = obs['left_team_roles'][active_index]
 
-        active_player = np.array([*player_pos, *player_vel, player_tired_factor, player_role])
+        active_player = np.array([player_pos[0], player_pos[1] / 0.42,
+                                  *player_vel, player_tired_factor])
 
         teammates = []
         for i in range(len(obs["left_team"])):
-            # Add all your teammates
-            if i == active_index:
-                continue
+            # We purposely repeat ourselves to maintain consistency of roles
             i_player_pos = obs['left_team'][i]
             i_player_vel = obs['left_team_direction'][i]
             i_player_tired_factor = obs['left_team_tired_factor'][i]
-            i_player_role = obs['left_team_roles'][i]
-            squashed_dist = sigmoid(dist_between_points(player_pos, i_player_pos))
+            i_dist = dist_between_points(player_pos, i_player_pos)
+            i_vel_mag = np.linalg.norm(i_dist)
+            i_vel_ang = arctan2(i_player_vel[1], i_player_vel[0])
             angle = angle_between_points(player_pos, i_player_pos)
-
-            teammates.append([squashed_dist, np.cos(angle), np.sin(angle), i_player_vel[0], i_player_vel[1],
-                              i_player_tired_factor, i_player_role])
+            teammates.append([i_player_pos[0], i_player_pos[1] / 0.42,
+                              i_dist, np.cos(angle), np.sin(angle),
+                              i_vel_mag, np.cos(i_vel_ang), np.sin(i_vel_ang),
+                              i_player_tired_factor])
 
         enemy_team = []
         for i in range(len(obs["right_team"])):
             i_player_pos = obs['right_team'][i]
             i_player_vel = obs['right_team_direction'][i]
             i_player_tired_factor = obs['right_team_tired_factor'][i]
-            i_player_role = obs['right_team_roles'][i]
-            squashed_dist = sigmoid(dist_between_points(player_pos, i_player_pos))
+            i_dist = dist_between_points(player_pos, i_player_pos)
+            i_vel_mag = np.linalg.norm(i_dist)
+            i_vel_ang = arctan2(i_player_vel[1], i_player_vel[0])
             angle = angle_between_points(player_pos, i_player_pos)
+            teammates.append([i_player_pos[0], i_player_pos[1] / 0.42,
+                              i_dist, np.cos(angle), np.sin(angle),
+                              i_vel_mag, np.cos(i_vel_ang), np.sin(i_vel_ang),
+                              i_player_tired_factor])
 
-            enemy_team.append([squashed_dist, np.cos(angle), np.sin(angle), i_player_vel[0], i_player_vel[1],
-                              i_player_tired_factor, i_player_role])
         teammates = np.array(teammates).flatten()
         enemy_team = np.array(enemy_team).flatten()
-        curr_dist_to_goal = np.log(dist_to_goal(obs))  # Closer distance have larger variance, farther less important
+        curr_dist_to_goal = dist_to_goal(obs)  # Closer distance have larger variance, farther less important
 
         # get other information
         game_mode = [0 for _ in range(7)]
-        game_mode[obs['game_mode']] = 1
+        if (type(obs['game_mode']) is GameMode):
+            game_mode[obs['game_mode'].value] = 1
+        else:
+            game_mode[obs['game_mode']] = 1
 
-        scalars = [*obs['ball'],
+        sticky_action = [0 for _ in range(len(sticky_action_lookup))]
+        if type(obs['sticky_actions']) is set:
+            for action in obs['sticky_actions']:
+                sticky_action[sticky_action_lookup[action.name]] = 1
+        else:
+            sticky_action = obs['sticky_actions']
+
+        active_team = obs['ball_owned_team']
+        prev_team = self.constant_lookup['prev_team']
+        action_vec = self.constant_lookup['intermediate_action_vec']
+        possession = False  # Determine if we have possession or not
+        if ((active_team == 0 and prev_team == 0) or
+                (active_team == 1 and prev_team == 0) or
+                (active_team == 1 and prev_team == 1)):
+            # Reset if lose the ball or keep the ball on pass
+            self.constant_lookup['intermediate_action_vec'] = [0, 0, 0, 0]
+            possession = False
+        elif (active_team == -1 and prev_team == 0 and prev_action is not None):
+            # Nobody owns right now and you had possession
+            # Track prev actions
+            if (type(prev_action) is Action and
+                    prev_action.value in inter_action_vec_lookup):
+                action_vec[inter_action_vec_lookup[prev_action.value]] = 1
+            elif prev_action in inter_action_vec_lookup:
+                action_vec[inter_action_vec_lookup[prev_action]] = 1
+            possession = True
+
+        if active_team != -1:
+            self.constant_lookup['prev_team'] = active_team
+
+        self.constant_lookup['possession'] = possession
+        l_score, r_score = obs['score']
+        prev_l_score, prev_r_score = self.constant_lookup['prev_l_score'], self.constant_lookup['prev_r_score']
+
+        l_score_change = l_score - prev_l_score
+        r_score_change = r_score - prev_r_score
+
+        scalars = [obs['ball'][0],
+                   obs['ball'][1] / 0.42,
                    *obs['ball_direction'],
-                   obs['ball_owned_team'],
-                   obs['ball_owned_player'],
-                   *obs['score'],
-                   obs['steps_left'],
+                   obs['steps_left'] / 3000,
                    *game_mode,
-                   *obs['sticky_actions'],
-                   curr_dist_to_goal]
-
-        lost_possession = False
-        if obs["ball_owned_team"] != -1:
-            lost_possession = values['prev_owner'] != obs["ball_owned_team"]
-            values['prev_owner'] = obs["ball_owned_team"]
+                   curr_dist_to_goal,
+                   *sticky_action,  # Tracks sticky actions
+                   *action_vec,  # Tracks long term actions
+                   l_score,
+                   r_score,
+                   l_score_change,
+                   r_score_change,
+                   possession,
+                   active_team]
 
         scalars = np.r_[scalars].astype(np.float32)
-        # get the actual scores and compute a reward
-        l_score, r_score = obs['score']
-        reward = rule_based_reward(obs, action, lost_possession)
-        reward_info = l_score, r_score, reward
-        # action_mask = compute_action_mask(obs).flatten()
-        goal_pos = [1, 0]
-        angle_to_goal = max(-np.pi / 2, min(np.pi / 2, angle_between_points(player_pos, goal_pos)))
         combined = np.concatenate([active_player.flatten(), teammates.flatten(),
-                                   enemy_team.flatten(), scalars.flatten(), np.cos(angle_to_goal).flatten()])
-        return combined, reward_info
+                                   enemy_team.flatten(), scalars.flatten()])
+        done = False
+        if obs['steps_left'] == 0:
+            done = True
+
+        reward = possession_score_reward(possession, l_score_change, r_score_change, l_score, r_score, done)
+
+        self.constant_lookup['prev_r_score'] = r_score
+        self.constant_lookup['prev_l_score'] = l_score
+
+        return combined, (l_score, r_score, reward)

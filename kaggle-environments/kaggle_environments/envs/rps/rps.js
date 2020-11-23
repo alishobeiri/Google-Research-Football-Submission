@@ -14,9 +14,11 @@ async function renderer(context) {
     } = context;
 
     const sign_names = ["Rock", "Paper", "Scissors", "Spock", "Lizard"]
-    const sign_icons = ["👊", "📄", "✂️", "🖖", "🦎"]
+    const sign_icons = ["\u{1f44a}", "\u{270b}", "\u{2702}\u{fe0f}", "\u{1f596}", "\u{1f98e}"]
 
     // Common Dimensions.
+    const maxWidth = 960;
+    const maxHeight = 280;
     const canvasSize = Math.min(height, width);
     const unit = 8;
     const offset = canvasSize > 400 ? canvasSize * 0.1 : unit / 2;
@@ -43,8 +45,8 @@ async function renderer(context) {
 
     // Canvas setup and reset.
     let c = canvas.getContext("2d");
-    canvas.width = canvasSize;
-    canvas.height = canvasSize;
+    canvas.width = Math.min(maxWidth, width);
+    canvas.height = Math.min(maxHeight, height);
     c.clearRect(0, 0, canvas.width, canvas.height);
 
     // ------------------------------------------------------------------------------------//
@@ -57,11 +59,17 @@ async function renderer(context) {
         const p1_move = state[1].observation.lastOpponentAction;
         const p2_move = state[0].observation.lastOpponentAction;
 
+        const info = environment.info;
+        const player1_text = info?.TeamNames?.[0] || "Player 1";
+        const player2_text = info?.TeamNames?.[1] || "Player 2";
+
         const ctx = canvas.getContext("2d");
-        const label_x = 0;
-        const player1_x = 250;
-        const player2_x = 500;
-        const middle_x = (player1_x + player2_x) / 2 + 30;
+        const padding = 20;
+        const row_width = (Math.min(maxWidth, width) - padding * 2) / 3;
+        const label_x = padding;
+        const player1_x = padding + row_width;
+        const player2_x = padding + 2 * row_width;
+        const middle_x = padding + row_width * 1.5;
         const label_y = 40;
         const sign_id_y = 80;
         const sign_name_y = 120;
@@ -73,18 +81,17 @@ async function renderer(context) {
         ctx.fillStyle = "#FFFFFF";
 
         // Player Row
-        ctx.fillText("Player 1", player1_x, label_y)
-        ctx.fillText("Player 2", player2_x, label_y)
+        ctx.fillText(player1_text, player1_x, label_y)
+        ctx.fillText(player2_text, player2_x, label_y)
 
-        // Sign id Row
-        ctx.fillText("Id:", label_x, sign_id_y);
+        // Action Id Row
+        ctx.fillText("Action:", label_x, sign_id_y);
         ctx.fillText(p1_move, player1_x, sign_id_y);
         ctx.fillText(p2_move, player2_x, sign_id_y);
 
-        // Sign name Row
+        // Action Name Row
         ctx.fillText("Name:", label_x, sign_name_y);
         ctx.fillText(sign_names[p1_move], player1_x, sign_name_y);
-        ctx.fillText("vs", middle_x, sign_name_y);
         ctx.fillText(sign_names[p2_move], player2_x, sign_name_y);
 
         // Emoji Row

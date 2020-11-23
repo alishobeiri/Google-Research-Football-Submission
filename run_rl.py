@@ -21,7 +21,7 @@ import torch
 from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.algos.dqn.cat_dqn import CategoricalDQN
 from rlpyt.algos.dqn.dqn import DQN
-from rlpyt.algos.pg.ppo import PPO
+from rlpyt.algos.pg.ppo import PPO, PPOMoE
 from rlpyt.runners.async_rl import AsyncRlEval
 from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
@@ -34,6 +34,7 @@ from rlpyt.utils.logging.context import logger_context
 from copy import deepcopy
 
 from agents.football_ppo_agent import FootballFfAgent
+from agents.football_ppo_moe_agent import FootballMoeAgent
 from envs.cartpole import cartpole_env
 
 from agents.football_cat_dqn_agent import FootballCatDqnAgent
@@ -96,23 +97,29 @@ def build_and_train(scenario="academy_empty_goal_close",
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
         # total data collected before each training iteration Batch_T * Batch_B
         algo=dict(
-            batch_size=batch_size,
-            replay_ratio=4,
-            min_steps_learn=int(0),
-            prioritized_replay=True,
-            double_dqn=True,
-            n_step_return=4
+            # batch_size=batch_size,
+            # replay_ratio=4,
+            # min_steps_learn=int(0),
+            # prioritized_replay=True,
+            # double_dqn=True,
+            # n_step_return=4,
+            # V_min=-10,
+            # V_max=10
         ),
         agent=dict(
             # dueling=True
             # eps_itr_max=50000,
             model_kwargs=dict(
-                dueling=True
+                latent_dim=64,
+                num_experts=6,
+                hidden_size=[128, 128, 128],
+                noisy_gating=True,
+                k=1
             )
         ),
         sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
-    sampler = AsyncGpuSampler(
+    sampler = SerialSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
@@ -124,9 +131,9 @@ def build_and_train(scenario="academy_empty_goal_close",
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    algo = CategoricalDQNVector(**config["algo"])  # Run with defaults.
-    agent = FootballCatDqnAgent(**config["agent"])
-    runner = AsyncRlEval(
+    algo = PPOMoE(**config["algo"])  # Run with defaults.
+    agent = FootballMoeAgent(**config["agent"])
+    runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
         sampler=sampler,
@@ -134,7 +141,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         log_interval_steps=log_interval_steps,
         affinity=affinity,
     )
-    name = "rainbow" + "_" + type(algo).__name__ + "_" + scenario + "_rule_based_reward"
+    name = "ppo" + "_" + type(algo).__name__ + "_" + scenario + "_rule_based_reward"
     log_dir = 'training/' + name
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
         tb_loc = logger.get_tf_summary_writer().log_dir
@@ -155,7 +162,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
