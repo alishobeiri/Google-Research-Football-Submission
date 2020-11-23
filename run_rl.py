@@ -75,7 +75,7 @@ def build_and_train(scenario="academy_empty_goal_close",
     eval_kwargs["configuration"]["save_video"] = False
     # env_kwargs = dict()
     # eval_kwargs = env_kwargs.copy()
-    run_async = True
+    run_async = False
     if run_async:
         affinity = make_affinity(
             run_slot=0,
@@ -119,12 +119,12 @@ def build_and_train(scenario="academy_empty_goal_close",
         ),
         sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
-    sampler = GpuSampler(
+    sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(200), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(0), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=1,
         eval_max_steps=int(100e3),
         eval_max_trajectories=eval_max_trajectories,

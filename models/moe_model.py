@@ -197,7 +197,6 @@ class MoE(nn.Module):
         Returns:
         a `Tensor` of shape [batch, n].
         """
-
         batch = clean_values.size(0)
         m = noisy_top_values.size(1)
         top_values_flat = noisy_top_values.flatten()
@@ -205,7 +204,7 @@ class MoE(nn.Module):
         threshold_if_in = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_in), 1)
         is_in = torch.gt(noisy_values, threshold_if_in)
         threshold_positions_if_out = threshold_positions_if_in - 1
-        threshold_if_out = torch.unsqueeze(torch.gather(top_values_flat,0 , threshold_positions_if_out), 1)
+        threshold_if_out = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_out), 1)
         # is each value currently in the top k.
         prob_if_in = self.normal.cdf((clean_values - threshold_if_in)/noise_stddev)
         prob_if_out = self.normal.cdf((clean_values - threshold_if_out)/noise_stddev)
@@ -227,7 +226,7 @@ class MoE(nn.Module):
         if self.noisy_gating:
             raw_noise_stddev = x @ self.w_noise
             noise_stddev = ((self.softplus(raw_noise_stddev) + noise_epsilon) * train)
-            noisy_logits = clean_logits + ( torch.randn_like(clean_logits) * noise_stddev)
+            noisy_logits = clean_logits + (torch.randn_like(clean_logits) * noise_stddev)
             logits = noisy_logits
         else:
             logits = clean_logits
