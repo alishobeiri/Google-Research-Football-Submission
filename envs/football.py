@@ -70,7 +70,8 @@ class FootballTrajInfo(TrajInfo):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.score = 0
+        self.l_score = 0
+        self.r_score = 0
         self.action = 0
         self.player_pos_x = 0
         self.player_pos_y = 0
@@ -78,6 +79,7 @@ class FootballTrajInfo(TrajInfo):
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
         self.action = action
-        self.score = env_info[0]
+        self.l_score = env_info[0]
+        self.r_score = env_info[1]
         self.player_pos_x = observation[0]
         self.player_pos_y = observation[1]
