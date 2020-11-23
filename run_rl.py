@@ -119,7 +119,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         ),
         sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
-    sampler = AsyncGpuSampler(
+    sampler = GpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
@@ -133,7 +133,7 @@ def build_and_train(scenario="academy_empty_goal_close",
 
     algo = PPOMoE(**config["algo"])  # Run with defaults.
     agent = FootballMoeAgent(**config["agent"])
-    runner = AsyncRlEval(
+    runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
         sampler=sampler,
