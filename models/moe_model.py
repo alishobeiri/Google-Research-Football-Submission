@@ -271,7 +271,7 @@ class MoE(nn.Module):
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
         value_outputs = [self.values[i](expert_outputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-        value = dispatcher.combine(value_outputs)
+        value = dispatcher.combine(value_outputs).squeeze(-1)
 
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
