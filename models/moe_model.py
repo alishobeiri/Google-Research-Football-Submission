@@ -59,7 +59,7 @@ class SparseDispatcher(object):
         # drop indices
         _, self._expert_index = sorted_experts.split(1, dim=1)
         # get according batch index for each expert
-        self._batch_index = sorted_experts[index_sorted_experts[:, 1],0]
+        self._batch_index = sorted_experts[index_sorted_experts[:, 1], 0]
         # calculate num samples that each expert gets
         self._part_sizes = list((gates > 0).sum(0).cpu().numpy())
         # expand gates to match with self._batch_index
@@ -120,7 +120,6 @@ class SparseDispatcher(object):
 
 
 class MoE(nn.Module):
-
     """Call a Sparsely gated mixture of experts layer with 1-layer Feed-Forward networks as experts.
     Args:
     input_size: integer - size of the input
@@ -142,9 +141,9 @@ class MoE(nn.Module):
         self.k = k
 
         self.encoder = MlpModel(input_size, hidden_size, latent_dim)
-        self.value = MlpModel(input_size, hidden_size, 1)
         # instantiate experts
-        self.experts = nn.ModuleList([MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
+        self.experts = nn.ModuleList(
+            [MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
         self.values = nn.ModuleList([torch.nn.Linear(self.output_size, 1) for i in range(self.num_experts)])
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
@@ -153,7 +152,7 @@ class MoE(nn.Module):
         self.softmax = nn.Softmax(1)
         self.normal = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
 
-        assert(self.k <= self.num_experts)
+        assert (self.k <= self.num_experts)
 
     def cv_squared(self, x):
         """The squared coefficient of variation of a sample.
@@ -169,7 +168,7 @@ class MoE(nn.Module):
         # if only num_experts = 1
         if x.shape[0] == 1:
             return torch.Tensor([0])
-        return x.float().var() / (x.float().mean()**2 + eps)
+        return x.float().var() / (x.float().mean() ** 2 + eps)
 
     def _gates_to_load(self, gates):
         """Compute the true load per expert, given the gates.
@@ -207,8 +206,8 @@ class MoE(nn.Module):
         threshold_positions_if_out = threshold_positions_if_in - 1
         threshold_if_out = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_out), 1)
         # is each value currently in the top k.
-        prob_if_in = self.normal.cdf((clean_values - threshold_if_in)/noise_stddev)
-        prob_if_out = self.normal.cdf((clean_values - threshold_if_out)/noise_stddev)
+        prob_if_in = self.normal.cdf((clean_values - threshold_if_in) / noise_stddev)
+        prob_if_out = self.normal.cdf((clean_values - threshold_if_out) / noise_stddev)
         prob = torch.where(is_in, prob_if_in, prob_if_out)
         return prob
 
@@ -247,7 +246,7 @@ class MoE(nn.Module):
             load = self._gates_to_load(gates)
         return gates, load
 
-    def forward(self, observation, prev_action, prev_reward, train=True, loss_coef=1e-2):
+    def forward(self, observation, prev_action, prev_reward, loss_coef=1e-2):
         """Args:
         x: tensor shape [batch_size, input_size]
         train: a boolean scalar.
@@ -258,15 +257,16 @@ class MoE(nn.Module):
         training loss of the model.  The backpropagation of this loss
         encourages all experts to be approximately equally used across a batch.
         """
+        train = self.training
+
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
 
         z = self.encoder(observation.view(T * B, *obs_shape))
         gates, load = self.noisy_top_k_gating(z, train)
-        # calculate importance loss
-        importance = gates.sum(0)
-        loss = self.cv_squared(importance) + self.cv_squared(load)
-        loss *= loss_coef
+
+        if not train:
+            print(gates)
 
         dispatcher = SparseDispatcher(self.num_experts, gates)
         expert_inputs = dispatcher.dispatch(z)
@@ -276,7 +276,7 @@ class MoE(nn.Module):
         y = dispatcher.combine(expert_outputs)
         value = dispatcher.combine(value_outputs)
 
-        y = nn.functional.softmax(y, dim=-1)
+        # y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
         return y, value
 
