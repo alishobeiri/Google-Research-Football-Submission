@@ -91,7 +91,7 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(workers_cpus=list(range(os.cpu_count())))
+        affinity = dict(cuda_idx=0, workers_cpus=list(range(os.cpu_count())))
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -118,7 +118,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=batch_T, batch_B=1) #os.cpu_count()),
+        sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
