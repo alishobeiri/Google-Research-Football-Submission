@@ -265,9 +265,6 @@ class MoE(nn.Module):
         z = self.encoder(observation.view(T * B, *obs_shape))
         gates, load = self.noisy_top_k_gating(z, train)
 
-        if not train:
-            print(gates)
-
         dispatcher = SparseDispatcher(self.num_experts, gates)
         expert_inputs = dispatcher.dispatch(z)
         gates = dispatcher.expert_to_gates()
@@ -276,11 +273,12 @@ class MoE(nn.Module):
         y = dispatcher.combine(expert_outputs)
         value = dispatcher.combine(value_outputs)
 
-        # y = nn.functional.softmax(y, dim=-1)
+        y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
         return y, value
 
-    def loss(self, x, prev_action, prev_reward, train=True, loss_coef=1e-2):
+    def loss(self, x, prev_action, prev_reward, loss_coef=1e-2):
+        train = self.training
         if len(x.shape) == 1:
             x = x.unsqueeze(0)
         z = self.encoder(x)

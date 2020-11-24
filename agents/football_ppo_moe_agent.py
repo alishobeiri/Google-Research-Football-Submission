@@ -20,17 +20,6 @@ class FootballMixin:
                     output_size=env_spaces.action.n)
 
 
-class MoePPOAgent(CategoricalPgAgent):
-    def train_mode(self, itr):
-        super().train_mode(itr)
-
-    def sample_mode(self, itr):
-        super().sample_mode(itr)
-
-    def eval_mode(self, itr):
-        super().eval_mode(itr)
-
-
 class FootballMoeAgent(FootballMixin, CategoricalPgAgent):
 
     def __init__(self, ModelCls=MoE, **kwargs):
