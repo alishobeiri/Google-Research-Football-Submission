@@ -144,7 +144,7 @@ class MoE(nn.Module):
         # instantiate experts
         self.experts = nn.ModuleList(
             [MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
-        self.value = MLP(input_size, self.output_size, self.hidden_size)
+        self.value = MLP(self.input_size, self.output_size, self.hidden_size)
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
 
@@ -269,9 +269,8 @@ class MoE(nn.Module):
         expert_inputs = dispatcher.dispatch(z)
         gates = dispatcher.expert_to_gates()
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
-        value_outputs = [self.values[i](expert_outputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-        value = self.value(observation).squeeze(-1)
+        value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
 
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
