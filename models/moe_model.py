@@ -144,7 +144,7 @@ class MoE(nn.Module):
         # instantiate experts
         self.experts = nn.ModuleList(
             [MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
-        self.value = MLP(self.input_size, self.output_size, self.hidden_size)
+        self.value = MLP(self.input_size, 1, self.hidden_size)
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
 
