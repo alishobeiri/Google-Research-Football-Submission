@@ -91,7 +91,7 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(cuda_idx=0, workers_cpus=list(range(os.cpu_count())))
+        affinity = dict(workers_cpus=list(range(os.cpu_count())))
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
