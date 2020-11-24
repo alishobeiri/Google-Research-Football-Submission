@@ -120,7 +120,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         ),
         sampler=dict(batch_T=batch_T, batch_B=1) #os.cpu_count()),
     )
-    sampler = SerialSampler(
+    sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
