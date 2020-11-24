@@ -56,7 +56,6 @@ class SparseDispatcher(object):
         self._num_experts = num_experts
         # sort experts
         sorted_experts, index_sorted_experts = torch.nonzero(gates).sort(0)
-        i_sorted_experts, i_sorted_experts = torch.nonzero(gates, as_tuple=True)
         # drop indices
         _, self._expert_index = sorted_experts.split(1, dim=1)
         # get according batch index for each expert
@@ -145,7 +144,7 @@ class MoE(nn.Module):
         # instantiate experts
         self.experts = nn.ModuleList(
             [MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
-        self.values = nn.ModuleList([torch.nn.Linear(self.output_size, 1) for i in range(self.num_experts)])
+        self.value = MLP(input_size, self.output_size, self.hidden_size)
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
 
@@ -272,7 +271,7 @@ class MoE(nn.Module):
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
         value_outputs = [self.values[i](expert_outputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-        value = dispatcher.combine(value_outputs).squeeze(-1)
+        value = self.value(observation).squeeze(-1)
 
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
