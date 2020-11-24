@@ -158,6 +158,6 @@ class PPOMoE(PPO):
     def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
             init_rnn_state=None):
         loss, entropy, perplexity = super().loss(agent_inputs, action, return_, advantage, valid, old_dist_info, init_rnn_state)
-        moe_loss = self.agent(*agent_inputs)
+        moe_loss = self.agent.model.loss(*agent_inputs)
         loss += moe_loss
         return loss, entropy, perplexity

@@ -142,9 +142,10 @@ class MoE(nn.Module):
         self.k = k
 
         self.encoder = MlpModel(input_size, hidden_size, latent_dim)
-        self.value = MlpModel(input_size, hidden_size, output_size)
+        self.value = MlpModel(input_size, hidden_size, 1)
         # instantiate experts
         self.experts = nn.ModuleList([MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
+        self.values = nn.ModuleList([torch.nn.Linear(self.output_size, 1) for i in range(self.num_experts)])
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
 
@@ -271,9 +272,9 @@ class MoE(nn.Module):
         expert_inputs = dispatcher.dispatch(z)
         gates = dispatcher.expert_to_gates()
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
+        value_outputs = [self.values[i](expert_outputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-
-        value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
+        value = dispatcher.combine(value_outputs)
 
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)

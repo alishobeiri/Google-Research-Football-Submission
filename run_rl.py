@@ -91,7 +91,7 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(cuda_idx=0, workers_cpus=list(range(os.cpu_count())))
+        affinity = dict(workers_cpus=list(range(os.cpu_count())))
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -115,16 +115,17 @@ def build_and_train(scenario="academy_empty_goal_close",
                 hidden_size=[128, 128, 128],
                 noisy_gating=True,
                 k=1
+                # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=batch_T, batch_B=1) #os.cpu_count()),
     )
-    sampler = CpuSampler(
+    sampler = SerialSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(200), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(0), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=1,
         eval_max_steps=int(100e3),
         eval_max_trajectories=eval_max_trajectories,
@@ -162,7 +163,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
@@ -173,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument('--min_steps_learn', help='Number of environment steps to take per parallel sampler before \
                                             training, default 256', type=int, default=0)# int(5e4))
     parser.add_argument('--batch_T', help='Number of environment steps to take per parallel sampler before \
-                                            training', type=int, default=256)
+                                            training', type=int, default=128)
     parser.add_argument('--cloud', help='Whether the project is on cloud or not', type=bool, default=False)
     parser.add_argument('--cloud_bucket', help='Storage bucket to save results to', type=str, default=None)
 
