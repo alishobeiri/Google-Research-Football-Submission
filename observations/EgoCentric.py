@@ -150,8 +150,6 @@ class EgoCentricObs(object):
                    curr_dist_to_goal,
                    *sticky_action,  # Tracks sticky actions
                    *action_vec,  # Tracks long term actions
-                   l_score,
-                   r_score,
                    l_score_change,
                    r_score_change,
                    possession,
