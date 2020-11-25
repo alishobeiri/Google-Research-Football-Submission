@@ -92,6 +92,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
+    state_dict = torch.load("moe_k1_model_no_encoder.pth")
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -106,7 +107,9 @@ def build_and_train(scenario="academy_empty_goal_close",
             # V_min=-10,
             # V_max=10
         ),
+
         agent=dict(
+            # initial_model_state_dict=state_dict,
             # dueling=True
             # eps_itr_max=50000,
             model_kwargs=dict(
@@ -125,9 +128,9 @@ def build_and_train(scenario="academy_empty_goal_close",
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(0), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=1,
-        eval_max_steps=int(100e3),
+        max_decorrelation_steps=int(300), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        eval_n_envs=10,
+        eval_max_steps=int(100e4),
         eval_max_trajectories=eval_max_trajectories,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
@@ -144,6 +147,7 @@ def build_and_train(scenario="academy_empty_goal_close",
     )
     name = "ppo" + "_" + type(algo).__name__ + "_" + scenario + "_rule_based_reward"
     log_dir = 'training/' + name
+
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
         tb_loc = logger.get_tf_summary_writer().log_dir
         tb = program.TensorBoard()
@@ -163,7 +167,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard')
+    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
