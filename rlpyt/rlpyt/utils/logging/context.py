@@ -54,6 +54,7 @@ def logger_context(
     logger.set_log_tabular_only(False)
     log_dir = osp.join(log_dir, f"run_{run_ID}")
     exp_dir = osp.abspath(log_dir)
+
     if LOG_DIR != osp.commonpath([exp_dir, LOG_DIR]) and not override_prefix:
         print(f"logger_context received log_dir outside of {LOG_DIR}: "
             f"prepending by {LOG_DIR}/local/<yyyymmdd>/<hhmmss>/")

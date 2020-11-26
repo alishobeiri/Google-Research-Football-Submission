@@ -54,12 +54,8 @@ from models.football_cat_dqn_model import FootballCatDqnModel
 
 def build_and_train(scenario="academy_empty_goal_close",
                     run_id=0,
-                    eval_max_trajectories=int(10),
                     log_interval_steps=int(10e5),
-                    batch_size=512,
                     n_train_steps=10000,
-                    min_steps_learn=int(5e4),
-                    batch_T=256,
                     cloud=False, bucket=None):
     env_kwargs = dict(debug=False,
                       configuration={
@@ -121,17 +117,17 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=batch_T, batch_B=1) #os.cpu_count()),
+        sampler=dict(batch_T=256, batch_B=os.cpu_count()),
     )
-    sampler = SerialSampler(
+    sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=1,
+        eval_n_envs=100,
         eval_max_steps=int(100e5),
-        eval_max_trajectories=eval_max_trajectories,
+        eval_max_trajectories=100,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
@@ -191,12 +187,8 @@ if __name__ == "__main__":
     build_and_train(
         scenario=args.scenario,
         run_id=args.run_id,
-        eval_max_trajectories=args.eval_max_trajectories,
         log_interval_steps=args.log_interval_steps,
-        batch_size=args.batch_size,
         n_train_steps=args.n_train_steps,
-        min_steps_learn=args.min_steps_learn,
-        batch_T=args.batch_T,
         bucket=args.cloud_bucket,
         cloud=args.cloud
     )
