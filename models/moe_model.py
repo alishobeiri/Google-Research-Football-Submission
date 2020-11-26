@@ -306,7 +306,7 @@ class MoE(nn.Module):
         gates = dispatcher.expert_to_gates()
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-        value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
+        value = self.value(observation.view(T * B, *obs_shape))
 
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
