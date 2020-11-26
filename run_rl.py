@@ -23,6 +23,7 @@ from rlpyt.algos.dqn.cat_dqn import CategoricalDQN
 from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.pg.ppo import PPO, PPOMoE
 from rlpyt.runners.async_rl import AsyncRlEval
+from rlpyt.samplers.async_.cpu_sampler import AsyncCpuSampler
 from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
@@ -119,7 +120,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         ),
         sampler=dict(batch_T=256, batch_B=os.cpu_count()),
     )
-    sampler = CpuSampler(
+    sampler = AsyncCpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
@@ -133,7 +134,7 @@ def build_and_train(scenario="academy_empty_goal_close",
 
     algo = PPOMoE(**config["algo"])  # Run with defaults.
     agent = FootballMoeAgent(**config["agent"])
-    runner = MinibatchRlEval(
+    runner = AsyncRlEval(
         algo=algo,
         agent=agent,
         sampler=sampler,
