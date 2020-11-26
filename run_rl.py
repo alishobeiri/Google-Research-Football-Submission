@@ -121,15 +121,15 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=batch_T, batch_B=1) #os.cpu_count()),
     )
-    sampler = CpuSampler(
+    sampler = SerialSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=100,
+        eval_n_envs=1,
         eval_max_steps=int(100e5),
         eval_max_trajectories=eval_max_trajectories,
         **config["sampler"]  # More parallel environments for batched forward-pass.
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--min_steps_learn', help='Number of environment steps to take per parallel sampler before \
                                             training, default 256', type=int, default=0)# int(5e4))
     parser.add_argument('--batch_T', help='Number of environment steps to take per parallel sampler before \
-                                            training', type=int, default=128)
+                                            training', type=int, default=256)
     parser.add_argument('--cloud', help='Whether the project is on cloud or not', type=bool, default=False)
     parser.add_argument('--cloud_bucket', help='Storage bucket to save results to', type=str, default=None)
 
