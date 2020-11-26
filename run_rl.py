@@ -155,6 +155,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         url = tb.launch()
         print("Tensorboard running at: ", url)
         # eval_kwargs["configuration"]["logdir"] = tb_loc
+        import pdb; pdb.set_trace();
         runner.train()
         if cloud:
             storage_output_loc = tb_loc.strip("/")[len(LOG_DIR) + len('local'):].strip("/")
