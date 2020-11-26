@@ -44,7 +44,6 @@ class FootballEnv(gym.Env):
         state, (l_score, r_score, custom_reward) = self.obs_parser.parse(obs, action)
         info['l_score'] = l_score
         info['r_score'] = r_score
-        import pdb; pdb.set_trace()
         return state, custom_reward, done, info
 
     def reset(self):
