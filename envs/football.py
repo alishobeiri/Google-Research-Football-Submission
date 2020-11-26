@@ -14,6 +14,7 @@ class FootballEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self,
+                 rank,
                  scenario_name="11_vs_11_kaggle",
                  right_agent="submission.py",
                  debug=False,
@@ -22,7 +23,7 @@ class FootballEnv(gym.Env):
         global count
         # Randomly select handmade defense or builtin ai to add variance
         random = np.random.random()
-        right_agent = "builtin_ai" if count % 2 == 0 else "submission.py"
+        right_agent = "builtin_ai" if rank % 2 == 0 else "submission.py"
         print("Right agent: ", right_agent)
         self.agents = [None, right_agent]  # We will step on the None agent
         self.env = make("football",
@@ -61,8 +62,8 @@ class FootballEnv(gym.Env):
         pass
 
 
-def football_env(**kwargs):
-    return GymEnvWrapper(FootballEnv(**kwargs), act_null_value=0)
+def football_env(rank, **kwargs):
+    return GymEnvWrapper(FootballEnv(rank, **kwargs), act_null_value=0)
 
 
 class FootballTrajInfo(TrajInfo):

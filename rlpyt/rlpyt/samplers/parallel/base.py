@@ -72,7 +72,7 @@ class ParallelSamplerBase(BaseSampler):
             logger.log(f"Total parallel evaluation envs: {eval_n_envs}.")
             self.eval_max_T = eval_max_T = int(self.eval_max_steps // eval_n_envs)
 
-        env = self.EnvCls(**self.env_kwargs)
+        env = self.EnvCls(rank, **self.env_kwargs)
         self._agent_init(agent, env, global_B=global_B,
             env_ranks=env_ranks)
         examples = self._build_buffers(env, bootstrap_value)
