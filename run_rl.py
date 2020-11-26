@@ -91,8 +91,8 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("moe_k1_model_no_encoder.pth")
+        affinity = dict(workers_cpus=list(range(1)))# os.cpu_count())))
+    state_dict = torch.load("moe_k1_model.pth")
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -117,13 +117,13 @@ def build_and_train(scenario="academy_empty_goal_close",
                 num_experts=6,
                 hidden_size=[128, 128, 128],
                 noisy_gating=True,
-                k=1
+                k=5
                 # hidden_sizes=[128, 128, 128]
             )
         ),
         sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
-    sampler = CpuSampler(
+    sampler = SerialSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,

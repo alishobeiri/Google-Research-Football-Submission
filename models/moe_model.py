@@ -7,15 +7,43 @@ import numpy as np
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size):
+    def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__()
         self.model = MlpModel(input_size, hidden_size, output_size)
-        self.log_soft = nn.LogSoftmax(1)
 
     def forward(self, x):
         out = self.model(x)
-        out = self.log_soft(out)
         return out
+
+
+class ResBlock(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(ResBlock, self).__init__()
+        self.model = MlpModel(input_size, hidden_size, output_size)
+
+    def forward(self, x):
+        y = self.model(x)
+        y = y + x
+        return y
+
+
+class ResNet(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_blocks):
+        super(ResNet, self).__init__()
+        self.blocks = []
+
+        # For every block except last, add residual connection
+        for i in range(num_blocks):
+            self.blocks.append(ResBlock(input_size, hidden_size, input_size))
+
+        # Last wont support residual connection as sizes don't match
+        self.blocks.append(torch.nn.Linear(input_size, output_size))
+
+        self.model = torch.nn.Sequential(*self.blocks)
+
+    def forward(self, x):
+        y = self.model(x)
+        return y
 
 
 class SparseDispatcher(object):
@@ -130,7 +158,8 @@ class MoE(nn.Module):
     k: an integer - how many experts to use for each batch element
     """
 
-    def __init__(self, input_size, latent_dim, output_size, num_experts, hidden_size, noisy_gating=True, k=4):
+    def __init__(self, input_size, hidden_size, latent_dim, output_size, num_experts, num_blocks=3, noisy_gating=True,
+                 k=4):
         super(MoE, self).__init__()
         self.noisy_gating = noisy_gating
         self.num_experts = num_experts
@@ -140,11 +169,16 @@ class MoE(nn.Module):
         self.hidden_size = hidden_size
         self.k = k
 
-        self.encoder = MlpModel(input_size, hidden_size, latent_dim)
+        self.encoder = ResNet(input_size=input_size, hidden_size=hidden_size,
+                              output_size=latent_dim, num_blocks=num_blocks)
         # instantiate experts
-        self.experts = nn.ModuleList(
-            [MLP(latent_dim, self.output_size, self.hidden_size) for i in range(self.num_experts)])
-        self.value = MLP(self.input_size, 1, self.hidden_size)
+        self.experts = nn.ModuleList([ResNet(input_size=latent_dim,
+                                             hidden_size=hidden_size,
+                                             output_size=output_size,
+                                             num_blocks=num_blocks)
+                                      for i in range(self.num_experts)])
+        self.value = ResNet(input_size=input_size, hidden_size=hidden_size,
+                            output_size=1, num_blocks=num_blocks)
         self.w_gate = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(latent_dim, num_experts), requires_grad=True)
 
@@ -246,7 +280,7 @@ class MoE(nn.Module):
             load = self._gates_to_load(gates)
         return gates, load
 
-    def forward(self, observation, prev_action, prev_reward, loss_coef=1e-2):
+    def forward(self, observation, prev_action, prev_reward):
         """Args:
         x: tensor shape [batch_size, input_size]
         train: a boolean scalar.
@@ -272,15 +306,14 @@ class MoE(nn.Module):
         y = dispatcher.combine(expert_outputs)
         value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
 
-        y = nn.functional.softmax(y, dim=-1)
+        # y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
         return y, value
 
-    def loss(self, x, prev_action, prev_reward, loss_coef=1e-2):
+    def loss(self, observation, prev_action, prev_reward, loss_coef=1e-1):
         train = self.training
-        if len(x.shape) == 1:
-            x = x.unsqueeze(0)
-        z = self.encoder(x)
+        lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
+        z = self.encoder(observation.view(T * B, *obs_shape))
         gates, load = self.noisy_top_k_gating(z, train)
         # calculate importance loss
         importance = gates.sum(0)
