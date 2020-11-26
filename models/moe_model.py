@@ -4,6 +4,8 @@ from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from torch.distributions.normal import Normal
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 class MLP(nn.Module):
@@ -306,7 +308,7 @@ class MoE(nn.Module):
         y = dispatcher.combine(expert_outputs)
         value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
 
-        # y = nn.functional.softmax(y, dim=-1)
+        y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
         return y, value
 

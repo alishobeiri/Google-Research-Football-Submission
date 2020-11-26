@@ -91,8 +91,8 @@ def build_and_train(scenario="academy_empty_goal_close",
             # cpu_per_run=1,
         )
     else:
-        affinity = dict(workers_cpus=list(range(1)))# os.cpu_count())))
-    state_dict = torch.load("moe_k1_model.pth")
+        affinity = dict(workers_cpus=list(range(os.cpu_count())))
+    state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -109,28 +109,28 @@ def build_and_train(scenario="academy_empty_goal_close",
         ),
 
         agent=dict(
-            # initial_model_state_dict=state_dict,
+            initial_model_state_dict=state_dict,
             # dueling=True
             # eps_itr_max=50000,
             model_kwargs=dict(
-                latent_dim=128,
-                num_experts=6,
+                latent_dim=64,
+                num_experts=10,
                 hidden_size=[128, 128, 128],
                 noisy_gating=True,
-                k=5
+                k=4
                 # hidden_sizes=[128, 128, 128]
             )
         ),
         sampler=dict(batch_T=batch_T, batch_B=os.cpu_count()),
     )
-    sampler = SerialSampler(
+    sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(300), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=10,
-        eval_max_steps=int(100e4),
+        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        eval_n_envs=100,
+        eval_max_steps=int(100e5),
         eval_max_trajectories=eval_max_trajectories,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
@@ -145,7 +145,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         log_interval_steps=log_interval_steps,
         affinity=affinity,
     )
-    name = "ppo" + "_" + type(algo).__name__ + "_" + scenario + "_rule_based_reward"
+    name = type(algo).__name__ + "_" + scenario + "_possession_scoring_reward"
     log_dir = 'training/' + name
 
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
@@ -155,7 +155,6 @@ def build_and_train(scenario="academy_empty_goal_close",
         url = tb.launch()
         print("Tensorboard running at: ", url)
         # eval_kwargs["configuration"]["logdir"] = tb_loc
-        import pdb; pdb.set_trace();
         runner.train()
         if cloud:
             storage_output_loc = tb_loc.strip("/")[len(LOG_DIR) + len('local'):].strip("/")

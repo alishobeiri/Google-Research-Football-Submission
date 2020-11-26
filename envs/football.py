@@ -8,6 +8,7 @@ import numpy as np
 
 from kaggle_environments.envs.football.helpers import Action
 
+count = 0
 
 class FootballEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -16,13 +17,12 @@ class FootballEnv(gym.Env):
                  scenario_name="11_vs_11_kaggle",
                  right_agent="submission.py",
                  debug=False,
-                 configuration=dict(),
-                 env_id=0):
+                 configuration=dict()):
         super(FootballEnv, self).__init__()
-        self.env_id = env_id
+        global count
         # Randomly select handmade defense or builtin ai to add variance
         random = np.random.random()
-        right_agent = "builtin_ai" if random > 0.5 else "submission.py"
+        right_agent = "builtin_ai" if count % 2 == 0 else "submission.py"
         print("Right agent: ", right_agent)
         self.agents = [None, right_agent]  # We will step on the None agent
         self.env = make("football",
@@ -31,7 +31,8 @@ class FootballEnv(gym.Env):
         self.obs_parser = EgoCentricObs()
         # Create action spaces
         self.action_space = gym.spaces.Discrete(len(Action))
-
+        self.env_id = count
+        count += 1
         obs = self.reset()
         # Maybe can build custom observation parsers
 
@@ -60,8 +61,8 @@ class FootballEnv(gym.Env):
         pass
 
 
-def football_env(env_id=1, **kwargs):
-    return GymEnvWrapper(FootballEnv(env_id=env_id, **kwargs), act_null_value=0)
+def football_env(**kwargs):
+    return GymEnvWrapper(FootballEnv(**kwargs), act_null_value=0)
 
 
 class FootballTrajInfo(TrajInfo):
