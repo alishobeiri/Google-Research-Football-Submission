@@ -68,7 +68,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["render"] = True
     eval_kwargs["configuration"]["save_video"] = False
     run_async = False
     if run_async:
@@ -117,7 +117,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=128, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=128, batch_B=1)# os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
@@ -139,6 +139,10 @@ def build_and_train(scenario="academy_empty_goal_close",
     # e.close()
 
     # init_agent.initialize(spaces)
+    batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
+    log_interval_steps = 200 * batch_size # Logs every 100 optimizations
+
+    n_train_steps = 10000 * batch_size
 
     algo = PPOMoE(**config["algo"])  # Run with defaults.
     # algo.set_prior(init_agent)
