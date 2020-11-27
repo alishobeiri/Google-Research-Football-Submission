@@ -17,6 +17,6 @@ def friendly_player_dist_to_ball(obs):
 
 def closest_defender_to_ball(obs):
     ball_pos = obs["ball"]
-    closest_def_distance = np.min(np.linalg.norm(np.array(ball_pos[:2]) - np.array(obs['right_team'][1:]), axis=1))
+    closest_def_distance = np.min(np.linalg.norm(np.array(ball_pos[:2]) - np.array(obs['right_team']), axis=1))
     return closest_def_distance
 
