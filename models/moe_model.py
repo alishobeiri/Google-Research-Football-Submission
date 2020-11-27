@@ -127,7 +127,7 @@ class SparseDispatcher(object):
           a `Tensor` with shape `[batch_size, <extra_output_dims>]`.
         """
         # apply exp to expert outputs, so we are not longer in log space
-        stitched = torch.cat(expert_out, 0).exp()
+        stitched = torch.cat(expert_out, 0)
 
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
@@ -137,7 +137,7 @@ class SparseDispatcher(object):
         # add eps to all zero values in order to avoid nans when going back to log space
         combined[combined == 0] = np.finfo(float).eps
         # back to log space
-        return combined.log()
+        return combined
 
     def expert_to_gates(self):
         """Gate values corresponding to the examples in the per-expert `Tensor`s.
@@ -170,6 +170,8 @@ class MoE(nn.Module):
         self.latent_size = latent_dim
         self.hidden_size = hidden_size
         self.k = k
+
+        input_size = input_size - output_size # Remove the action masking from the input to match sizes properly
 
         self.encoder = ResNet(input_size=input_size, hidden_size=hidden_size,
                               output_size=latent_dim, num_blocks=num_blocks)
@@ -297,8 +299,11 @@ class MoE(nn.Module):
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
+        observation = observation.view(T * B, *obs_shape)
+        action_mask = observation[:, -19:].type(torch.bool)
+        observation = observation[:, :-19]
 
-        z = self.encoder(observation.view(T * B, *obs_shape))
+        z = self.encoder(observation)
         gates, load = self.noisy_top_k_gating(z, train)
 
         dispatcher = SparseDispatcher(self.num_experts, gates)
@@ -306,8 +311,8 @@ class MoE(nn.Module):
         gates = dispatcher.expert_to_gates()
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
         y = dispatcher.combine(expert_outputs)
-        value = self.value(observation.view(T * B, *obs_shape)).squeeze(-1)
-
+        value = self.value(observation).squeeze(-1)
+        y[~action_mask] = -1e24
         y = nn.functional.softmax(y, dim=-1)
         y, value = restore_leading_dims((y, value), lead_dim, T, B)
         return y, value
@@ -315,7 +320,11 @@ class MoE(nn.Module):
     def loss(self, observation, prev_action, prev_reward, loss_coef=1e-1):
         train = self.training
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
-        z = self.encoder(observation.view(T * B, *obs_shape))
+        observation = observation.view(T * B, *obs_shape)
+        action_mask = observation[:, -19:].type(torch.bool)
+        observation = observation[:, :-19]
+
+        z = self.encoder(observation)
         gates, load = self.noisy_top_k_gating(z, train)
         # calculate importance loss
         importance = gates.sum(0)

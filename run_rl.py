@@ -70,8 +70,6 @@ def build_and_train(scenario="academy_empty_goal_close",
     eval_kwargs = deepcopy(env_kwargs)
     eval_kwargs["configuration"]["render"] = False
     eval_kwargs["configuration"]["save_video"] = False
-    # env_kwargs = dict()
-    # eval_kwargs = env_kwargs.copy()
     run_async = False
     if run_async:
         affinity = make_affinity(
@@ -82,10 +80,6 @@ def build_and_train(scenario="academy_empty_goal_close",
             sample_gpu_per_run=1,
             async_sample=True,
             optim_sample_share_gpu=True,
-            # hyperthread_offset=24,  # If machine has 24 cores.
-            # n_socket=2,  # Presume CPU socket affinity to lower/upper half GPUs.
-            # gpu_per_run=2,  # How many GPUs to parallelize one run across.
-            # cpu_per_run=1,
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
@@ -93,17 +87,8 @@ def build_and_train(scenario="academy_empty_goal_close",
     init_state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
 
     config = dict(
-        # Batch T - How much samples to get before training, Batch B how many parallel to sample data
-        # total data collected before each training iteration Batch_T * Batch_B
         algo=dict(
-            # batch_size=batch_size,
-            # replay_ratio=4,
-            # min_steps_learn=int(0),
-            # prioritized_replay=True,
-            # double_dqn=True,
-            # n_step_return=4,
-            # V_min=-10,
-            # V_max=10
+            normalize_advantage=True
         ),
 
         agent=dict(
@@ -132,31 +117,31 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=256, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=64, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(3000), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
-        eval_max_steps=int(100e5),
-        eval_max_trajectories=100,
+        eval_max_steps=int(100 * 1500),
+        eval_max_trajectories=1000,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
     agent = FootballMoeAgent(**config["agent"])
-    init_agent = FootballMoeAgent(**config["init_agent"])
+    # init_agent = FootballMoeAgent(**config["init_agent"])
 
-    e = football_env(0, **env_kwargs)
-    spaces = e.spaces
-    e.close()
+    # e = football_env(0, **env_kwargs)
+    # spaces = e.spaces
+    # e.close()
 
-    init_agent.initialize(spaces)
+    # init_agent.initialize(spaces)
 
-    algo = PPOPrior(**config["algo"])  # Run with defaults.
-    algo.set_prior(init_agent)
+    algo = PPOMoE(**config["algo"])  # Run with defaults.
+    # algo.set_prior(init_agent)
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,

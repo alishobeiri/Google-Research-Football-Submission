@@ -1,7 +1,7 @@
 import numpy as np
 from rewards.distance_to_goal import dist_to_goal, dist_to_goal_reward, rule_based_reward
 from rewards.possession_score_zero_sum import possession_score_reward
-from utils.utils import sigmoid, angle_between_points, dist_between_points, compute_action_mask
+from utils.utils import sigmoid, angle_between_points, dist_between_points
 from kaggle_environments.envs.football.helpers import *
 from numpy import arctan2
 
@@ -55,6 +55,46 @@ class EgoCentricObs(object):
             prev_l_score=0,
             prev_r_score=0
         )
+
+    def action_mask(self, obs):
+        # We want to prevent certain actions from being taken by appending a binary vector that
+        # indicates which actions are possible
+        stick_actions = obs["sticky_actions"]
+        action_mask = np.ones(len(Action))
+
+        action_mask[Action.ReleaseDribble.value] = 0
+        action_mask[Action.ReleaseSprint.value] = 0
+        action_mask[Action.ReleaseDirection.value] = 0
+
+        if obs['ball_owned_team'] == -1:
+            # Can move, sprint, idle
+            action_mask[Action.LongPass.value] = 0
+            action_mask[Action.HighPass.value] = 0
+            action_mask[Action.ShortPass.value] = 0
+            action_mask[Action.Shot.value] = 0
+            action_mask[Action.Dribble.value] = 0
+        elif obs['ball_owned_team'] == 0:
+            # Can do everything but slide
+            action_mask[Action.Slide.value] = 0
+        elif obs['ball_owned_team'] == 1:
+            action_mask[Action.LongPass.value] = 0
+            action_mask[Action.HighPass.value] = 0
+            action_mask[Action.ShortPass.value] = 0
+            action_mask[Action.Shot.value] = 0
+            action_mask[Action.Dribble.value] = 0
+
+        # Handle sticky actions
+        if any(stick_actions[:8]):
+            action_mask[Action.ReleaseDirection.value] = 1
+
+        if stick_actions[8]:
+            action_mask[Action.ReleaseSprint.value] = 1
+
+        if stick_actions[9]:
+            action_mask[Action.ReleaseDribble.value] = 1
+
+        return action_mask
+
 
     def parse(self, obs, prev_action=None):
         active_index = obs['active']
@@ -132,6 +172,9 @@ class EgoCentricObs(object):
                 action_vec[inter_action_vec_lookup[prev_action]] = 1
             possession = True
 
+        if not possession and active_team == 0:
+            possession = True
+
         if active_team != -1:
             self.constant_lookup['prev_team'] = active_team
 
@@ -156,8 +199,9 @@ class EgoCentricObs(object):
                    active_team]
 
         scalars = np.r_[scalars].astype(np.float32)
+        action_mask = self.action_mask(obs)
         combined = np.concatenate([active_player.flatten(), teammates.flatten(),
-                                   enemy_team.flatten(), scalars.flatten()])
+                                   enemy_team.flatten(), scalars.flatten(), action_mask.flatten()])
         done = False
         if obs['steps_left'] == 0:
             done = True

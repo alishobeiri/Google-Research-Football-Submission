@@ -21,24 +21,4 @@ def angle_between_points(p1, p2):
     return angle
 
 
-def compute_action_mask(obs):
-    # We want to prevent certain actions from being taken by appending a binary vector that
-    # indicates which actions are possible
-    stick_actions = obs["sticky_actions"]
-    all_actions = np.ones(len(Action))
-    all_actions[Action.Idle.value] = 0  # Turn off idle to force movement
-    all_actions[Action.ReleaseDribble.value] = 0
-    all_actions[Action.ReleaseSprint.value] = 0
-    all_actions[Action.ReleaseDirection.value] = 0
-    all_actions[Action.Slide.value] = 0
-
-    if any(stick_actions[:8]):
-        all_actions[Action.ReleaseDirection.value] = 1
-
-    if stick_actions[8]:
-        all_actions[Action.ReleaseSprint.value] = 1
-
-    if stick_actions[9]:
-        all_actions[Action.ReleaseDribble.value] = 1
-
-    return all_actions
+# def compute_action_mask(obs):

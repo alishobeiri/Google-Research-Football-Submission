@@ -10,6 +10,7 @@ from kaggle_environments.envs.football.helpers import Action
 
 count = 0
 
+
 class FootballEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
