@@ -83,8 +83,8 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
-    init_state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
+    state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
+    init_state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
 
     config = dict(
         algo=dict(
