@@ -12,6 +12,18 @@ def dist_to_goal(obs):
     return dist
 
 
+def dist_to_goal_x(obs):
+    ball_pos = obs["ball"]
+    dist = np.linalg.norm(np.array(ball_pos[0]) - np.array(goal_pos[0]))
+    return dist
+
+
+def dist_to_goal_y(obs):
+    ball_pos = obs["ball"]
+    dist = np.linalg.norm(np.array(ball_pos[1]) - np.array(goal_pos[1]))
+    return dist
+
+
 def dist_to_goal_reward(obs):
     ball_pos = obs["ball"]
     dist = np.linalg.norm(np.array(ball_pos[:2]) - np.array(goal_pos))

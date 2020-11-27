@@ -142,7 +142,7 @@ def build_and_train(scenario="academy_empty_goal_close",
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
     log_interval_steps = 50 * batch_size # Logs every 100 optimizations
 
-    n_train_steps = 10000 * batch_size
+    # n_train_steps = 10000 * batch_size
 
     algo = PPOMoE(**config["algo"])  # Run with defaults.
     # algo.set_prior(init_agent)
