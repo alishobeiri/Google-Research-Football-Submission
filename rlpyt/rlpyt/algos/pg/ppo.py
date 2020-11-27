@@ -163,6 +163,7 @@ class PPOMoE(PPO):
         loss += moe_loss
         return loss, entropy, perplexity
 
+
 class PPOPrior(PPOMoE):
     def set_prior(self, init_agent):
         self.init_agent = init_agent
@@ -177,8 +178,9 @@ class PPOPrior(PPOMoE):
         kl_loss = self.agent.distribution.mean_kl(new_dist_info, init_dist_info) # Flipping the order here because it seems the default kl is forward..
         kl_loss *= self.entropy_loss_coeff
 
-        entropy_loss = - entropy * self.entropy_loss_coeff
+        entropy_loss = -entropy * self.entropy_loss_coeff
 
-        loss += + kl_loss - entropy_loss
+        loss += kl_loss - entropy_loss + moe_loss
+        entropy = kl_loss
         return loss, entropy, perplexity
 

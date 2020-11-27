@@ -140,7 +140,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(3000), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=4,
+        eval_n_envs=100,
         eval_max_steps=int(100e5),
         eval_max_trajectories=100,
         **config["sampler"]  # More parallel environments for batched forward-pass.

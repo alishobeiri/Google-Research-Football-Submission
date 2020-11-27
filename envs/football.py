@@ -14,7 +14,7 @@ class FootballEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self,
-                 rank,
+                 rank=0,
                  scenario_name="11_vs_11_kaggle",
                  right_agent="submission.py",
                  debug=False,
@@ -62,7 +62,7 @@ class FootballEnv(gym.Env):
         pass
 
 
-def football_env(rank, **kwargs):
+def football_env(rank=0, **kwargs):
     return GymEnvWrapper(FootballEnv(rank, **kwargs), act_null_value=0)
 
 
