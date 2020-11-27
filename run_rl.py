@@ -117,7 +117,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=64, batch_B=1)# os.cpu_count()),
+        sampler=dict(batch_T=256, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
