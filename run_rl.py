@@ -68,7 +68,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["render"] = True
     eval_kwargs["configuration"]["save_video"] = False
     run_async = False
     if run_async:
@@ -124,10 +124,10 @@ def build_and_train(scenario="academy_empty_goal_close",
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(3000), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(10), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
         eval_max_steps=int(100e6),
-        eval_max_trajectories=100,
+        eval_max_trajectories=500,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
@@ -140,7 +140,7 @@ def build_and_train(scenario="academy_empty_goal_close",
 
     # init_agent.initialize(spaces)
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
-    log_interval_steps = 200 * batch_size # Logs every 100 optimizations
+    log_interval_steps = 50 * batch_size # Logs every 100 optimizations
 
     n_train_steps = 10000 * batch_size
 
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
