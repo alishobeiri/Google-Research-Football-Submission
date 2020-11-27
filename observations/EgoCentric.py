@@ -66,6 +66,8 @@ class EgoCentricObs(object):
         action_mask[Action.ReleaseSprint.value] = 0
         action_mask[Action.ReleaseDirection.value] = 0
 
+        # Sliding is over used so prevent it from happening
+        action_mask[Action.Slide.value] = 0
         if obs['ball_owned_team'] == -1:
             # Can move, sprint, idle
             action_mask[Action.LongPass.value] = 0
@@ -206,7 +208,7 @@ class EgoCentricObs(object):
         if obs['steps_left'] == 0:
             done = True
 
-        reward = possession_score_reward(possession, l_score_change, r_score_change, l_score, r_score, done)
+        reward = possession_score_reward(obs, possession, l_score_change, r_score_change, l_score, r_score, done)
 
         self.constant_lookup['prev_r_score'] = r_score
         self.constant_lookup['prev_l_score'] = l_score

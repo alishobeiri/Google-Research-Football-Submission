@@ -68,7 +68,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["render"] = True
     eval_kwargs["configuration"]["save_video"] = False
     run_async = False
     if run_async:
@@ -83,8 +83,8 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
-    init_state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
+    state_dict = torch.load("pretrained/itr_1631.pkl")['agent_state_dict']
+    init_state_dict = torch.load("pretrained/itr_1631.pkl")['agent_state_dict']
 
     config = dict(
         algo=dict(
@@ -117,17 +117,17 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=64, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=64, batch_B=1)# os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(3000), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
-        eval_max_steps=int(100 * 1500),
-        eval_max_trajectories=1000,
+        eval_max_steps=int(100e6),
+        eval_max_trajectories=100,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
