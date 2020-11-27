@@ -159,5 +159,26 @@ class PPOMoE(PPO):
             init_rnn_state=None):
         loss, entropy, perplexity = super().loss(agent_inputs, action, return_, advantage, valid, old_dist_info, init_rnn_state)
         moe_loss = self.agent.model.loss(*agent_inputs)
+
         loss += moe_loss
         return loss, entropy, perplexity
+
+class PPOPrior(PPOMoE):
+    def set_prior(self, init_agent):
+        self.init_agent = init_agent
+
+    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
+            init_rnn_state=None):
+        loss, entropy, perplexity = super().loss(agent_inputs, action, return_, advantage, valid, old_dist_info, init_rnn_state)
+        moe_loss = self.agent.model.loss(*agent_inputs)
+
+        init_dist_info, _ = self.init_agent(*agent_inputs)
+        new_dist_info, _ = self.agent(*agent_inputs)
+        kl_loss = self.agent.distribution.mean_kl(new_dist_info, init_dist_info) # Flipping the order here because it seems the default kl is forward..
+        kl_loss *= self.entropy_loss_coeff
+
+        entropy_loss = - entropy * self.entropy_loss_coeff
+
+        loss += + kl_loss - entropy_loss
+        return loss, entropy, perplexity
+

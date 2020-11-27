@@ -21,7 +21,7 @@ import torch
 from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.algos.dqn.cat_dqn import CategoricalDQN
 from rlpyt.algos.dqn.dqn import DQN
-from rlpyt.algos.pg.ppo import PPO, PPOMoE
+from rlpyt.algos.pg.ppo import PPO, PPOMoE, PPOPrior
 from rlpyt.runners.async_rl import AsyncRlEval
 from rlpyt.samplers.async_.cpu_sampler import AsyncCpuSampler
 from rlpyt.samplers.async_.gpu_sampler import AsyncGpuSampler
@@ -90,6 +90,7 @@ def build_and_train(scenario="academy_empty_goal_close",
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
     state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
+    init_state_dict = torch.load("pretrained/moe_resnet_latent_64_k_4_model_0.58618.pth")
 
     config = dict(
         # Batch T - How much samples to get before training, Batch B how many parallel to sample data
@@ -118,6 +119,19 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
+        init_agent=dict(
+            initial_model_state_dict=init_state_dict,
+            # dueling=True
+            # eps_itr_max=50000,
+            model_kwargs=dict(
+                latent_dim=64,
+                num_experts=10,
+                hidden_size=[128, 128, 128],
+                noisy_gating=True,
+                k=4
+                # hidden_sizes=[128, 128, 128]
+            )
+        ),
         sampler=dict(batch_T=256, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
@@ -126,14 +140,23 @@ def build_and_train(scenario="academy_empty_goal_close",
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(3000), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=100,
+        eval_n_envs=4,
         eval_max_steps=int(100e5),
         eval_max_trajectories=100,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    algo = PPOMoE(**config["algo"])  # Run with defaults.
     agent = FootballMoeAgent(**config["agent"])
+    init_agent = FootballMoeAgent(**config["init_agent"])
+
+    e = football_env(0, **env_kwargs)
+    spaces = e.spaces
+    e.close()
+
+    init_agent.initialize(spaces)
+
+    algo = PPOPrior(**config["algo"])  # Run with defaults.
+    algo.set_prior(init_agent)
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
