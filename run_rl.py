@@ -68,7 +68,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = True
+    eval_kwargs["configuration"]["render"] = False
     eval_kwargs["configuration"]["save_video"] = False
     run_async = False
     if run_async:
