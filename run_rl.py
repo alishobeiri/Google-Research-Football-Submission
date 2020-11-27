@@ -172,7 +172,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
+    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
