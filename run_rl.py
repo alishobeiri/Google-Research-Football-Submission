@@ -140,7 +140,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         log_interval_steps=log_interval_steps,
         affinity=affinity,
     )
-    name = type(algo).__name__ + "_" + scenario + "_possession_scoring_reward"
+    name = type(algo).__name__ + "_" + scenario + "_self_play"
     log_dir = 'training/' + name
 
     with logger_context(log_dir, run_id, name, config, snapshot_mode="gap", use_summary_writer=True):
