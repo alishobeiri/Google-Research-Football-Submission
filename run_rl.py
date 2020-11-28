@@ -83,8 +83,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/itr_1631.pkl")['agent_state_dict']
-    init_state_dict = torch.load("pretrained/itr_1631.pkl")['agent_state_dict']
+    state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
 
     config = dict(
         algo=dict(
@@ -104,20 +103,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        init_agent=dict(
-            initial_model_state_dict=init_state_dict,
-            # dueling=True
-            # eps_itr_max=50000,
-            model_kwargs=dict(
-                latent_dim=64,
-                num_experts=10,
-                hidden_size=[128, 128, 128],
-                noisy_gating=True,
-                k=4
-                # hidden_sizes=[128, 128, 128]
-            )
-        ),
-        sampler=dict(batch_T=128, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=64, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
@@ -140,7 +126,7 @@ def build_and_train(scenario="academy_empty_goal_close",
 
     # init_agent.initialize(spaces)
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
-    log_interval_steps = 50 * batch_size # Logs every 100 optimizations
+    log_interval_steps = 30 * batch_size # Logs every 100 optimizations
 
     # n_train_steps = 10000 * batch_size
 

@@ -24,7 +24,7 @@ class FootballEnv(gym.Env):
         global count
         # Randomly select handmade defense or builtin ai to add variance
         random = np.random.random()
-        right_agent = "do_nothing"  # "builtin_ai" if rank % 2 == 0 else "submission.py"
+        right_agent = "submission.py" # "do_nothing"  # "builtin_ai" if rank % 2 == 0 else "submission.py"
         print("Right agent: ", right_agent)
         self.agents = [None, right_agent]  # We will step on the None agent
         self.env = make("football",

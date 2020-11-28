@@ -208,7 +208,7 @@ class EgoCentricObs(object):
         if obs['steps_left'] == 0:
             done = True
 
-        reward = possession_score_reward(obs, possession, l_score_change, r_score_change, l_score, r_score, done)
+        reward = possession_score_reward(obs, possession, l_score_change, r_score_change, prev_action, l_score, r_score, done)
 
         self.constant_lookup['prev_r_score'] = r_score
         self.constant_lookup['prev_l_score'] = l_score
