@@ -236,6 +236,7 @@ model = MoE(
     k=4
 )
 model.load_state_dict(state_dict)
+model.eval()
 obs_parser = EgoCentricObs()
 prev_action = None
 
@@ -255,6 +256,7 @@ def agent(obs):
         # Used to check if model has changed before loading new state dict
         state_dict = torch.load(file)['agent_state_dict']
         model.load_state_dict(state_dict)
+        model.eval()
 
     model_inputs, _ = obs_parser.parse(obs, prev_action)
     obs_tensor = torch.from_numpy(model_inputs).float()
