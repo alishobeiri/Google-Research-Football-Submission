@@ -49,7 +49,7 @@ from envs.football import FootballTrajInfo, football_env
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import LOG_DIR
 from tensorboard import program
-
+from shutil import copyfile
 from models.football_cat_dqn_model import FootballCatDqnModel
 
 
@@ -83,7 +83,14 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/itr_299_pretrained_counterattack.pkl")['agent_state_dict']
+    state_dict_file = "pretrained/itr_299_pretrained_counterattack.pkl"
+    pretrained_direction = "pretrained/self_play/"
+    self_play_state_dict_file = os.path.join(pretrained_direction, "self_play.pkl")
+    state_dict = torch.load(state_dict_file)['agent_state_dict']
+    for file in os.listdir('pretrained/self_play'):
+        os.remove(os.path.join(pretrained_direction, file))
+
+    copyfile(state_dict_file, self_play_state_dict_file)
 
     config = dict(
         algo=dict(
@@ -103,7 +110,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=64, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=128, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_env,
@@ -128,7 +135,7 @@ def build_and_train(scenario="academy_empty_goal_close",
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
     log_interval_steps = 30 * batch_size # Logs every 100 optimizations
 
-    # n_train_steps = 10000 * batch_size
+    n_train_steps = 10000 * batch_size
 
     algo = PPOMoE(**config["algo"])  # Run with defaults.
     # algo.set_prior(init_agent)
@@ -162,7 +169,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_easy_stochastic')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)

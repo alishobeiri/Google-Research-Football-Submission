@@ -7,13 +7,13 @@ env_football = create_environment("11_vs_11_kaggle")
 env = make("football",
            debug=True,
            configuration={"save_video": False,
-                          "scenario_name": "academy_pass_and_shoot_with_keeper",
+                          "scenario_name": "academy_counterattack_easy",
                           "running_in_notebook": False,
                           'dump_full_episodes': False,
                           "render": True,
                           "logdir": "./logs"})
 
-output = env.run(["do_nothing", "do_nothing"])[-1]
+output = env.run(["self_play.py", "do_nothing"])[-1]
 print(
     'Left player: reward = %s, status = %s, info = %s' % (output[0]['reward'], output[0]['status'], output[0]['info']))
 print(

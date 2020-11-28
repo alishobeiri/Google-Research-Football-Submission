@@ -330,6 +330,10 @@ def pop_prefix():
 
 
 def save_itr_params(itr, params):
+    self_play_file = osp.join("pretrained/self_play/", 'self_play.pkl')
+    self_play_file_itr = osp.join("pretrained/self_play/", 'self_play_{}.pkl'.format(itr))
+    torch.save(params, self_play_file)
+    torch.save(params, self_play_file_itr)
     if _snapshot_dir:
         if _snapshot_mode == 'all':
             file_name = osp.join(get_snapshot_dir(), 'itr_%d.pkl' % itr)
@@ -345,6 +349,7 @@ def save_itr_params(itr, params):
             if itr == 0 or (itr + 1) % _snapshot_gap == 0:
                 file_name = osp.join(get_snapshot_dir(), 'itr_%d.pkl' % itr)
                 torch.save(params, file_name)
+
             file_name = osp.join(get_snapshot_dir(), 'params.pkl')
         elif _snapshot_mode == 'none':
             return

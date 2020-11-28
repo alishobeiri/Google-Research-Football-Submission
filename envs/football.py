@@ -24,11 +24,11 @@ class FootballEnv(gym.Env):
         global count
         # Randomly select handmade defense or builtin ai to add variance
         random = np.random.random()
-        right_agent = "builtin_ai" if rank % 2 == 0 else "submission.py"
+        right_agent = "self_play.py" # "builtin_ai" if rank % 2 == 0 else "submission.py"
         print("Right agent: ", right_agent)
         self.agents = [None, right_agent]  # We will step on the None agent
         self.env = make("football",
-                        debug=debug,
+                        debug=False,
                         configuration=configuration)
         self.obs_parser = EgoCentricObs()
         # Create action spaces
