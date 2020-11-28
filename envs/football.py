@@ -181,6 +181,11 @@ class FootballSelfPlayTrajInfo(TrajInfo):
         self.left_score = env_info[0]
         self.right_score = env_info[1]
 
+        self.left_pos_x += [observation[0][0]]
+        self.left_pos_y += [observation[0][1]]
+        self.right_pos_x += [observation[1][0]]
+        self.right_pos_y += [observation[1][1]]
+
         if env_info[2]:
             self.left_pos_x = np.array(self.left_pos_x).mean()
             self.left_pos_y = np.array(self.left_pos_y).mean()
@@ -188,8 +193,3 @@ class FootballSelfPlayTrajInfo(TrajInfo):
             self.right_pos_y = np.array(self.right_pos_y).mean()
             self.left_action = np.array(self.left_action).mean()
             self.right_action = np.array(self.right_action).mean()
-
-        self.left_pos_x += [observation[0][0]]
-        self.left_pos_y += [observation[0][1]]
-        self.right_pos_x += [observation[1][0]]
-        self.right_pos_y += [observation[1][1]]

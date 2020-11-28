@@ -49,7 +49,8 @@ class SerialEvalCollector(BaseEvalCollector):
                     completed_traj_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     o = env.reset()
-                if d:
+                if ((type(d) is np.ndarray
+                        and d.any()) or (type(d) is bool and d)):
                     action[b] = 0  # Prev_action for next step.
                     r = 0
                     self.agent.reset_one(idx=b)
