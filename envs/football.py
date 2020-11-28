@@ -173,14 +173,14 @@ class FootballSelfPlayTrajInfo(TrajInfo):
         self.left_action = action[0]
         self.right_action = action[1]
 
-        self.reward_left = reward[0]
-        self.reward_right = reward[1]
+        self.left_reward = reward[0]
+        self.right_reward = reward[1]
 
         if env_info[2]:
             # Plot score after episode ends
             self.score_diff = env_info[0] - env_info[1]
-            self.l_score = env_info[0]
-            self.r_score = env_info[1]
+            self.left_score = env_info[0]
+            self.right_score = env_info[1]
         self.left_pos_x = observation[0][0]
         self.left_pos_y = observation[0][1]
         self.right_pos_x = observation[1][0]
