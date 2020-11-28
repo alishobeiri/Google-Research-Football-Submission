@@ -68,7 +68,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                           "logdir": "./logs/test"}
                       )
     eval_kwargs = deepcopy(env_kwargs)
-    eval_kwargs["configuration"]["render"] = False
+    eval_kwargs["configuration"]["render"] = True
     eval_kwargs["configuration"]["save_video"] = False
     run_async = False
     if run_async:
@@ -110,17 +110,17 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=128, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=128, batch_B=1)# os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_self_play_env,
         TrajInfoCls=FootballSelfPlayTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
-        eval_n_envs=100,
+        max_decorrelation_steps=int(0), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        eval_n_envs=1,
         eval_max_steps=int(100e6),
-        eval_max_trajectories=1000,
+        eval_max_trajectories=5,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 

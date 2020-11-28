@@ -49,8 +49,8 @@ class FootballSelfPlayEnv(gym.Env):
             state_list.append(state)
             reward_list.append(custom_reward)
 
-        info['l_score'] = l_score
-        info['r_score'] = r_score
+        info['l_score'] = r_score # Since the right agent is processed last, the r_score is actually l_score
+        info['r_score'] = l_score
         info['traj_done'] = done
         return np.array(state_list), np.array(reward_list), np.array([done, done]), info
 
@@ -161,27 +161,35 @@ class FootballSelfPlayTrajInfo(TrajInfo):
         self.right_reward = 0
         self.left_score = 0
         self.right_score = 0
-        self.left_action = 0
-        self.right_action = 0
-        self.left_pos_x = 0
-        self.left_pos_y = 0
-        self.right_pos_x = 0
-        self.right_pos_y = 0
+        self.left_action = []
+        self.right_action = []
+        self.left_pos_x = []
+        self.left_pos_y = []
+        self.right_pos_x = []
+        self.right_pos_y = []
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
-        self.left_action = action[0]
-        self.right_action = action[1]
+        self.left_action += [action[0]]
+        self.right_action += [action[1]]
 
-        self.left_reward = reward[0]
-        self.right_reward = reward[1]
+        self.left_reward += reward[0]
+        self.right_reward += reward[1]
+
+        # Plot score after episode ends
+        self.score_diff = env_info[0] - env_info[1]
+        self.left_score = env_info[0]
+        self.right_score = env_info[1]
 
         if env_info[2]:
-            # Plot score after episode ends
-            self.score_diff = env_info[0] - env_info[1]
-            self.left_score = env_info[0]
-            self.right_score = env_info[1]
-        self.left_pos_x = observation[0][0]
-        self.left_pos_y = observation[0][1]
-        self.right_pos_x = observation[1][0]
-        self.right_pos_y = observation[1][1]
+            self.left_pos_x = np.array(self.left_pos_x).mean()
+            self.left_pos_y = np.array(self.left_pos_y).mean()
+            self.right_pos_x = np.array(self.right_pos_x).mean()
+            self.right_pos_y = np.array(self.right_pos_y).mean()
+            self.left_action = np.array(self.left_action).mean()
+            self.right_action = np.array(self.right_action).mean()
+
+        self.left_pos_x += [observation[0][0]]
+        self.left_pos_y += [observation[0][1]]
+        self.right_pos_x += [observation[1][0]]
+        self.right_pos_y += [observation[1][1]]
