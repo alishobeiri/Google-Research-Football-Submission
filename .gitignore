@@ -10,6 +10,7 @@ rlpyt/.git/
 rlpyt/.github/
 rlpyt/data/
 logs/
+pretrained/self_play/
 
 # C extensions
 *.so
