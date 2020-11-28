@@ -34,7 +34,7 @@ class SerialEvalCollector(BaseEvalCollector):
             observation[b] = o
         action = buffer_from_example(self.envs[0].action_space.null_value(),
             len(self.envs))
-        reward = np.zeros(len(self.envs), dtype="float32")
+        reward = np.zeros((len(self.envs), 2), dtype="float32")
         obs_pyt, act_pyt, rew_pyt = torchify_buffer((observation, action, reward))
         self.agent.reset()
         self.agent.eval_mode(itr)

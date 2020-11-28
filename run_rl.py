@@ -35,7 +35,7 @@ from rlpyt.utils.logging.context import logger_context
 from copy import deepcopy
 
 from agents.football_ppo_agent import FootballFfAgent
-from agents.football_ppo_moe_agent import FootballMoeAgent
+from agents.football_ppo_moe_agent import FootballMoeAgent, FootballMoeSelfPlayAgent
 from envs.cartpole import cartpole_env
 
 from agents.football_cat_dqn_agent import FootballCatDqnAgent
@@ -44,7 +44,7 @@ from agents.sac_discrete_agent import SACDiscreteAgent
 from algos.cat_dqn import CategoricalDQNVector
 from algos.dqn import DQNVector
 from algos.sac_discrete import SACDiscrete
-from envs.football import FootballTrajInfo, football_env
+from envs.football import FootballTrajInfo, football_env, football_self_play_env, FootballSelfPlayTrajInfo
 
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import LOG_DIR
@@ -113,8 +113,8 @@ def build_and_train(scenario="academy_empty_goal_close",
         sampler=dict(batch_T=128, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
-        EnvCls=football_env,
-        TrajInfoCls=FootballTrajInfo,
+        EnvCls=football_self_play_env,
+        TrajInfoCls=FootballSelfPlayTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
@@ -124,14 +124,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    agent = FootballMoeAgent(**config["agent"])
-    # init_agent = FootballMoeAgent(**config["init_agent"])
-
-    # e = football_env(0, **env_kwargs)
-    # spaces = e.spaces
-    # e.close()
-
-    # init_agent.initialize(spaces)
+    agent = FootballMoeSelfPlayAgent(**config["agent"])
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
     log_interval_steps = 30 * batch_size # Logs every 100 optimizations
 

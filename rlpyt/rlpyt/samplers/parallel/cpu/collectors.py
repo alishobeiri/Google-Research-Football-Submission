@@ -46,7 +46,8 @@ class CpuResetCollector(DecorrelatingStartCollector):
                     completed_infos.append(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     o = env.reset()
-                if d:
+                if ((type(d) is np.ndarray
+                        and d.any()) or (type(d) is bool and d)):
                     self.agent.reset_one(idx=b)
                 observation[b] = o
                 reward[b] = r
@@ -172,7 +173,7 @@ class CpuEvalCollector(BaseEvalCollector):
             observation[b] = o
         action = buffer_from_example(self.envs[0].action_space.null_value(),
             len(self.envs))
-        reward = np.zeros(len(self.envs), dtype="float32")
+        reward = np.zeros((len(self.envs), 2), dtype="float32")
         obs_pyt, act_pyt, rew_pyt = torchify_buffer((observation, action, reward))
         self.agent.reset()
         self.agent.eval_mode(itr)
@@ -187,7 +188,8 @@ class CpuEvalCollector(BaseEvalCollector):
                     self.traj_infos_queue.put(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     o = env.reset()
-                if d:
+                if ((type(d) is np.ndarray
+                        and d.any()) or (type(d) is bool and d)):
                     action[b] = 0  # Next prev_action.
                     r = 0
                     self.agent.reset_one(idx=b)

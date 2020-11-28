@@ -171,7 +171,9 @@ class MoE(nn.Module):
         self.hidden_size = hidden_size
         self.k = k
 
-        input_size = input_size - output_size # Remove the action masking from the input to match sizes properly
+        action_size = output_size
+
+        input_size = input_size - action_size # Remove the action masking from the input to match sizes properly
 
         self.encoder = ResNet(input_size=input_size, hidden_size=hidden_size,
                               output_size=latent_dim, num_blocks=num_blocks)
@@ -296,6 +298,7 @@ class MoE(nn.Module):
         encourages all experts to be approximately equally used across a batch.
         """
         train = self.training
+        observation = observation.float()
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
@@ -319,6 +322,8 @@ class MoE(nn.Module):
 
     def loss(self, observation, prev_action, prev_reward, loss_coef=1e-1):
         train = self.training
+        observation = observation.float()
+
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
         observation = observation.view(T * B, *obs_shape)
         action_mask = observation[:, -19:].type(torch.bool)
