@@ -83,7 +83,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth")
+    state_dict = torch.load("pretrained/itr_299.pkl")['agent_state_dict']
 
     config = dict(
         algo=dict(
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)

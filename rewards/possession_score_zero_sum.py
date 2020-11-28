@@ -23,12 +23,11 @@ def possession_score_reward(obs, possession, l_score_change, r_score_change, act
         else:
             rew += 0.02 * (1 - ball_dist_to_goal_x / 2) * (1 - ball_dist_to_goal_y / 0.42)
     else:
-        rew -= 0.02 * ball_dist_to_goal * d_to_ball
+        rew -= 0.2 * (ball_dist_to_goal_x/2) * (ball_dist_to_goal_y/0.42) * d_to_ball
 
     if l_score_change:
         rew += 20
     elif r_score_change:
         rew -= 20
 
-    # print(rew)
     return rew
