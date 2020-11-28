@@ -84,11 +84,11 @@ def build_and_train(scenario="academy_empty_goal_close",
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
     state_dict_file = "pretrained/itr_299_pretrained_counterattack.pkl"
-    pretrained_direction = "pretrained/self_play/"
-    self_play_state_dict_file = os.path.join(pretrained_direction, "self_play.pkl")
+    pretrained_directory = "pretrained/self_play/"
+    self_play_state_dict_file = os.path.join(pretrained_directory, "self_play.pkl")
     state_dict = torch.load(state_dict_file)['agent_state_dict']
-    for file in os.listdir('pretrained/self_play'):
-        os.remove(os.path.join(pretrained_direction, file))
+    for file in os.listdir(pretrained_directory):
+        os.remove(os.path.join(pretrained_directory, file))
 
     copyfile(state_dict_file, self_play_state_dict_file)
 
