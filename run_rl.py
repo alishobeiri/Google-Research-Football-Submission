@@ -83,7 +83,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict = torch.load("pretrained/itr_299.pkl")['agent_state_dict']
+    state_dict = torch.load("pretrained/itr_299_pretrained_counterattack.pkl")['agent_state_dict']
 
     config = dict(
         algo=dict(
@@ -110,7 +110,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(10), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
         eval_max_steps=int(100e6),
         eval_max_trajectories=500,
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_hard_0_01')
+    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_easy_stochastic')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
