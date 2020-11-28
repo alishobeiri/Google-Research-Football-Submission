@@ -110,7 +110,7 @@ def build_and_train(scenario="academy_empty_goal_close",
                 # hidden_sizes=[128, 128, 128]
             )
         ),
-        sampler=dict(batch_T=64, batch_B=os.cpu_count()),
+        sampler=dict(batch_T=128, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
         EnvCls=football_self_play_env,
@@ -126,7 +126,7 @@ def build_and_train(scenario="academy_empty_goal_close",
 
     agent = FootballMoeSelfPlayAgent(**config["agent"])
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
-    log_interval_steps = 30 * batch_size # Logs every 100 optimizations
+    log_interval_steps = 100 * batch_size # Logs every 100 optimizations
 
     n_train_steps = 10000 * batch_size
 
