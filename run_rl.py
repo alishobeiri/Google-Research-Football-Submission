@@ -117,10 +117,10 @@ def build_and_train(scenario="academy_empty_goal_close",
         TrajInfoCls=FootballSelfPlayTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
-        max_decorrelation_steps=int(10), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
+        max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
         eval_max_steps=int(100e6),
-        eval_max_trajectories=500,
+        eval_max_trajectories=100,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
