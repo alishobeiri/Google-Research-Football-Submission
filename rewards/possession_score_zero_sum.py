@@ -26,8 +26,8 @@ def possession_score_reward(obs, possession, l_score_change, r_score_change, act
         rew -= 0.4 * (ball_dist_to_goal_x/2) * (ball_dist_to_goal_y/0.42) * d_to_ball
 
     if l_score_change:
-        rew += 20
+        rew += 200
     elif r_score_change:
-        rew -= 20
+        rew -= 200
 
     return rew

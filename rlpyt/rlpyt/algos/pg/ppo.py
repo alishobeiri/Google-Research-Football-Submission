@@ -155,10 +155,15 @@ class PPO(PolicyGradientAlgo):
 
 
 class PPOMoE(PPO):
+    def __init__(self, **kwargs):
+        super(PPOMoE, self).__init__(**kwargs)
+
     def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
             init_rnn_state=None):
         loss, entropy, perplexity = super().loss(agent_inputs, action, return_, advantage, valid, old_dist_info, init_rnn_state)
         moe_loss = self.agent.model.loss(*agent_inputs)
+        if moe_loss.is_cuda:
+            loss = loss.cuda()
 
         loss += moe_loss
         return loss, entropy, perplexity

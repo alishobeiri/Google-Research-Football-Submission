@@ -113,7 +113,7 @@ class SparseDispatcher(object):
         inp_exp = inp[self._batch_index].squeeze(1)
         return torch.split(inp_exp, self._part_sizes, dim=0)
 
-    def combine(self, expert_out, multiply_by_gates=True):
+    def combine(self, expert_out, multiply_by_gates=True, device=torch.device('cpu')):
         """Sum together the expert output, weighted by the gates.
         The slice corresponding to a particular batch element `b` is computed
         as the sum over all experts `i` of the expert output, weighted by the
@@ -131,9 +131,9 @@ class SparseDispatcher(object):
 
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
-        zeros = torch.zeros(self._gates.size(0), expert_out[-1].size(1), requires_grad=True)
+        zeros = torch.zeros(self._gates.size(0), expert_out[-1].size(1), requires_grad=True).to(device)
         # combine samples that have been processed by the same k experts
-        combined = zeros.index_add(0, self._batch_index, stitched.float())
+        combined = zeros.index_add(0, self._batch_index.to(device), stitched.float().to(device))
         # add eps to all zero values in order to avoid nans when going back to log space
         combined[combined == 0] = np.finfo(float).eps
         # back to log space
@@ -190,7 +190,12 @@ class MoE(nn.Module):
 
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
-        self.normal = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+
+
+        self.normal_cpu = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+        self.normal_cuda = Normal(torch.tensor([0.0]).cuda(), torch.tensor([1.0]).cuda())
+
+        self.device = None
 
         assert (self.k <= self.num_experts)
 
@@ -240,14 +245,19 @@ class MoE(nn.Module):
         batch = clean_values.size(0)
         m = noisy_top_values.size(1)
         top_values_flat = noisy_top_values.flatten()
-        threshold_positions_if_in = torch.arange(batch) * m + self.k
+        threshold_positions_if_in = (torch.arange(batch) * m + self.k).to(self.device)
         threshold_if_in = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_in), 1)
         is_in = torch.gt(noisy_values, threshold_if_in)
         threshold_positions_if_out = threshold_positions_if_in - 1
         threshold_if_out = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_out), 1)
-        # is each value currently in the top k.
-        prob_if_in = self.normal.cdf((clean_values - threshold_if_in) / noise_stddev)
-        prob_if_out = self.normal.cdf((clean_values - threshold_if_out) / noise_stddev)
+        if self.device == torch.device('cpu'):
+            # is each value currently in the top k.
+            prob_if_in = self.normal_cpu.cdf((clean_values - threshold_if_in) / noise_stddev)
+            prob_if_out = self.normal_cpu.cdf((clean_values - threshold_if_out) / noise_stddev)
+        else:
+            prob_if_in = self.normal_cuda.cdf((clean_values - threshold_if_in) / noise_stddev)
+            prob_if_out = self.normal_cuda.cdf((clean_values - threshold_if_out) / noise_stddev)
+
         prob = torch.where(is_in, prob_if_in, prob_if_out)
         return prob
 
@@ -300,6 +310,8 @@ class MoE(nn.Module):
         train = self.training
         observation = observation.float()
 
+        self.device = observation.device
+
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, obs_shape = infer_leading_dims(observation, 1)
         observation = observation.view(T * B, *obs_shape)
@@ -313,7 +325,7 @@ class MoE(nn.Module):
         expert_inputs = dispatcher.dispatch(z)
         gates = dispatcher.expert_to_gates()
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
-        y = dispatcher.combine(expert_outputs)
+        y = dispatcher.combine(expert_outputs, device=self.device)
         value = self.value(observation).squeeze(-1)
         y[~action_mask] = -1e24
         y = nn.functional.softmax(y, dim=-1)

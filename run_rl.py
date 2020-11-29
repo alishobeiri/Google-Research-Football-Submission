@@ -83,7 +83,7 @@ def build_and_train(scenario="academy_empty_goal_close",
         )
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
-    state_dict_file = "pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth"
+    state_dict_file = "pretrained/moe_resnet_df_nexperts_20_latent_128_k_4_model_0.58334.pth"
     pretrained_directory = "pretrained/self_play/"
     self_play_state_dict_file = os.path.join(pretrained_directory, "self_play.pkl")
 
@@ -106,9 +106,9 @@ def build_and_train(scenario="academy_empty_goal_close",
             # dueling=True
             # eps_itr_max=50000,
             model_kwargs=dict(
-                latent_dim=64,
-                num_experts=10,
-                hidden_size=[128, 128, 128],
+                latent_dim=128,
+                num_experts=20,
+                hidden_size=[256, 256, 256],
                 noisy_gating=True,
                 k=4
                 # hidden_sizes=[128, 128, 128]

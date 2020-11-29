@@ -112,13 +112,13 @@ class FootballEnv(gym.Env):
 
     def pick_agent(self):
         index = 1
-        if self.count > 20:
+        if self.count > 30:
             index = 2
 
-        if self.count > 50:
+        if self.count > 60:
             index = 3
 
-        if self.count > 75:
+        if self.count > 80:
             index = 4
 
         if self.count > 100:
