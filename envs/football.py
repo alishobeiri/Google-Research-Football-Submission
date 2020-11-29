@@ -85,19 +85,19 @@ class FootballEnv(gym.Env):
                  configuration=dict()):
         super(FootballEnv, self).__init__()
         # Randomly select handmade defense or builtin ai to add variance
-        random = np.random.random()
-        right_agent = "self_play.py" # "builtin_ai" if rank % 2 == 0 else "submission.py"
-        print("Right agent: ", right_agent)
-        self.agents = [None, right_agent]  # We will step on the None agent
+        self.agents = [None, "do_nothing"]  # We will step on the None agent
         self.env = make("football",
                         debug=False,
                         configuration=configuration)
         self.obs_parser = EgoCentricObs()
         # Create action spaces
         self.action_space = gym.spaces.Discrete(len(Action))
+
+        self.available_agents = ["do_nothing", "run_right", "submission.py", "1k_elo.py", "self_play.py"]
+
+        self.count = 0
         obs = self.reset()
         # Maybe can build custom observation parsers
-
         self.observation_space = gym.spaces.Box(float('-inf'), float('inf'), obs.shape)
 
     def step(self, action):
@@ -106,9 +106,31 @@ class FootballEnv(gym.Env):
         state, (l_score, r_score, custom_reward) = self.obs_parser.parse(obs, action)
         info['l_score'] = l_score
         info['r_score'] = r_score
+        info['traj_done'] = done
+        info['count'] = self.count
         return state, custom_reward, done, info
 
+    def pick_agent(self):
+        index = 1
+        if self.count > 500:
+            index = 2
+
+        if self.count > 1000:
+            index = 3
+
+        if self.count > 5000:
+            index = 4
+
+        if self.count > 10000:
+            index = 5
+
+        agent = np.random.choice(self.available_agents[:index])
+        return agent
+
     def reset(self):
+        self.count += 1
+        agent = "do_nothing" # "self_play.py" # self.pick_agent()
+        self.agents = [None, agent]
         self.trainer = self.env.train(self.agents)
         obs = self.trainer.reset()
         self.obs_parser.reset()
@@ -126,8 +148,10 @@ class FootballEnv(gym.Env):
 def football_env(rank=0, **kwargs):
     return GymEnvWrapper(FootballEnv(rank, **kwargs), act_null_value=0)
 
+
 def football_self_play_env(rank=0, **kwargs):
     return GymEnvWrapper(FootballSelfPlayEnv(rank, **kwargs), act_null_value=0)
+
 
 class FootballTrajInfo(TrajInfo):
     """TrajInfo class for use with Football Env, to store raw game score separate
@@ -135,19 +159,33 @@ class FootballTrajInfo(TrajInfo):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.l_score = 0
-        self.r_score = 0
-        self.action = 0
-        self.player_pos_x = 0
-        self.player_pos_y = 0
+        self.score_diff = 0
+        self.left_reward = 0
+        self.left_score = 0
+        self.left_action = []
+        self.left_pos_x = []
+        self.left_pos_y = []
+        self.env_count = 0
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
-        self.action = action
-        self.l_score = env_info[0]
-        self.r_score = env_info[1]
-        self.player_pos_x = observation[0]
-        self.player_pos_y = observation[1]
+        self.left_action += [action]
+
+        self.left_reward += reward
+
+        # Plot score after episode ends
+        self.score_diff = env_info[0] - env_info[1]
+        self.left_score = env_info[0]
+        self.right_score = env_info[1]
+
+        self.left_pos_x += [observation[0]]
+        self.left_pos_y += [observation[0]]
+
+        if env_info[2]:
+            self.left_pos_x = np.array(self.left_pos_x).mean()
+            self.left_pos_y = np.array(self.left_pos_y).mean()
+            self.left_action = np.array(self.left_action).mean()
+            self.env_count = env_info[3]
 
 
 class FootballSelfPlayTrajInfo(TrajInfo):

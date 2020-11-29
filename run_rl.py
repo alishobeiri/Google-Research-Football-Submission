@@ -84,13 +84,17 @@ def build_and_train(scenario="academy_empty_goal_close",
     else:
         affinity = dict(workers_cpus=list(range(os.cpu_count())))
     state_dict_file = "pretrained/moe_resnet_df_nexperts_10_latent_64_k_4_model_0.58821.pth"
-    # pretrained_directory = "pretrained/self_play/"
-    # self_play_state_dict_file = os.path.join(pretrained_directory, "self_play.pkl")
+    pretrained_directory = "pretrained/self_play/"
+    self_play_state_dict_file = os.path.join(pretrained_directory, "self_play.pkl")
+
     state_dict = torch.load(state_dict_file)
-    # for file in os.listdir(pretrained_directory):
-    #     os.remove(os.path.join(pretrained_directory, file))
-    #
-    # copyfile(state_dict_file, self_play_state_dict_file)
+    if 'agent_state_dict' in state_dict:
+        state_dict = state_dict['agent_state_dict']
+
+    for file in os.listdir(pretrained_directory):
+        os.remove(os.path.join(pretrained_directory, file))
+
+    copyfile(state_dict_file, self_play_state_dict_file)
 
     config = dict(
         algo=dict(
@@ -113,18 +117,18 @@ def build_and_train(scenario="academy_empty_goal_close",
         sampler=dict(batch_T=128, batch_B=os.cpu_count()),
     )
     sampler = CpuSampler(
-        EnvCls=football_self_play_env,
-        TrajInfoCls=FootballSelfPlayTrajInfo,
+        EnvCls=football_env,
+        TrajInfoCls=FootballTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_kwargs,
         max_decorrelation_steps=int(1500), # How many steps to take in env before training to randomize starting env state so experience isn't all the same
         eval_n_envs=100,
         eval_max_steps=int(100e6),
-        eval_max_trajectories=100,
+        eval_max_trajectories=500,
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-    agent = FootballMoeSelfPlayAgent(**config["agent"])
+    agent = FootballMoeAgent(**config["agent"])
     batch_size = config['sampler']['batch_T'] * config['sampler']['batch_B']
     log_interval_steps = 100 * batch_size # Logs every 100 optimizations
 
@@ -162,7 +166,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--scenario', help='Football env scenario', default='11_vs_11_kaggle')
+    parser.add_argument('--scenario', help='Football env scenario', default='academy_counterattack_easy')
     parser.add_argument('--run_id', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--eval_max_trajectories', help='Max number of times to run a evaluation trajectory, \
                                                         helps to reduce variance', type=int, default=10)
