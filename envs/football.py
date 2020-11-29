@@ -129,7 +129,7 @@ class FootballEnv(gym.Env):
 
     def reset(self):
         self.count += 1
-        agent = "do_nothing" # "self_play.py" # self.pick_agent()
+        agent = self.pick_agent()
         self.agents = [None, agent]
         self.trainer = self.env.train(self.agents)
         obs = self.trainer.reset()
