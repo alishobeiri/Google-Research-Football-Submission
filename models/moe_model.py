@@ -191,9 +191,7 @@ class MoE(nn.Module):
         self.softplus = nn.Softplus()
         self.softmax = nn.Softmax(1)
 
-
-        self.normal_cpu = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
-        self.normal_cuda = Normal(torch.tensor([0.0]).cuda(), torch.tensor([1.0]).cuda())
+        self.normal = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
 
         self.device = None
 
@@ -250,13 +248,8 @@ class MoE(nn.Module):
         is_in = torch.gt(noisy_values, threshold_if_in)
         threshold_positions_if_out = threshold_positions_if_in - 1
         threshold_if_out = torch.unsqueeze(torch.gather(top_values_flat, 0, threshold_positions_if_out), 1)
-        if self.device == torch.device('cpu'):
-            # is each value currently in the top k.
-            prob_if_in = self.normal_cpu.cdf((clean_values - threshold_if_in) / noise_stddev)
-            prob_if_out = self.normal_cpu.cdf((clean_values - threshold_if_out) / noise_stddev)
-        else:
-            prob_if_in = self.normal_cuda.cdf((clean_values - threshold_if_in) / noise_stddev)
-            prob_if_out = self.normal_cuda.cdf((clean_values - threshold_if_out) / noise_stddev)
+        prob_if_in = self.normal.cdf((clean_values - threshold_if_in) / noise_stddev)
+        prob_if_out = self.normal.cdf((clean_values - threshold_if_out) / noise_stddev)
 
         prob = torch.where(is_in, prob_if_in, prob_if_out)
         return prob
