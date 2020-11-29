@@ -112,16 +112,16 @@ class FootballEnv(gym.Env):
 
     def pick_agent(self):
         index = 1
-        if self.count > 500:
+        if self.count > 20:
             index = 2
 
-        if self.count > 1000:
+        if self.count > 50:
             index = 3
 
-        if self.count > 5000:
+        if self.count > 75:
             index = 4
 
-        if self.count > 10000:
+        if self.count > 100:
             index = 5
 
         agent = np.random.choice(self.available_agents[:index])
