@@ -1,4 +1,6 @@
 # gfootball
+RL training framework and notebooks for the [Google Research Football Kaggle Competion](https://www.kaggle.com/c/google-football). Final ranked position: 300/1138 (Top 27%)
+
 
 ## Important information
 
